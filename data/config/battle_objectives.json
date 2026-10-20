@@ -1,0 +1,20 @@
+{
+    "tco_supply_fob": {
+        "name": "FOB Control Array",
+        "icon": "graphics/tco/fob/objective_supply_fob.png",
+        "sprite": "graphics/ships/deployables/mini_comm_relay.png",
+        "spriteScale": 1,
+        "captureTime": 20,
+        "battleSizeFractionBonus": 0,
+        "effectClass": "tco.fob.SupplyFobEffect"
+    },
+    "tco_repair_dock": {
+        "name": "Repair Dock Beacon",
+        "icon": "graphics/tco/fob/objective_supply_fob.png",
+        "sprite": "graphics/ships/deployables/mini_navbeacon.png",
+        "spriteScale": 1,
+        "captureTime": 20,
+        "battleSizeFractionBonus": 0,
+        "effectClass": "tco.dock.RepairDockEffect"
+    }
+}

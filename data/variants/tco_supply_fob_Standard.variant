@@ -1,0 +1,22 @@
+{
+    "displayName": "Up-Armoured",
+    "fluxCapacitors": 0,
+    "fluxVents": 10,
+    "goalVariant": true,
+    "hullId": "tco_supply_fob",
+    "hullMods": [
+        "heavyarmor",
+        "reinforcedhull",
+        "blast_doors"
+    ],
+    "modules": [
+        {"WS 004": "tco_fob_module_Standard"},
+        {"WS 002": "tco_fob_module_Standard"},
+        {"WS 003": "tco_fob_module_Standard"},
+        {"WS 001": "tco_fob_module_Standard"}
+    ],
+    "permaMods": [],
+    "sMods": [],
+    "variantId": "tco_supply_fob_Standard",
+    "weaponGroups": []
+}

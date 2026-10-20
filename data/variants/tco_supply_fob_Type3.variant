@@ -1,0 +1,23 @@
+{
+    "displayName": "Electronic Warfare",
+    "fluxCapacitors": 16,
+    "fluxVents": 0,
+    "goalVariant": true,
+    "hullId": "tco_supply_fob",
+    "hullMods": [
+        "nav_relay",
+        "ecm",
+        "eccm",
+        "fluxbreakers"
+    ],
+    "modules": [
+        {"WS 004": "tco_fob_module_Type3"},
+        {"WS 002": "tco_fob_module_Type3"},
+        {"WS 003": "tco_fob_module_Type3"},
+        {"WS 001": "tco_fob_module_Type3"}
+    ],
+    "permaMods": [],
+    "sMods": [],
+    "variantId": "tco_supply_fob_Type3",
+    "weaponGroups": []
+}

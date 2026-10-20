@@ -1,4 +1,3 @@
-[LICENSE.txt](https://github.com/user-attachments/files/33648846/LICENSE.txt)
 Tactical Combat Overhaul
 Copyright (c) 2026 Reaper. All rights reserved, except as allowed below.
 

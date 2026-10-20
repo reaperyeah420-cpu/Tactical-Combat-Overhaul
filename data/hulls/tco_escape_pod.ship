@@ -1,0 +1,45 @@
+{
+    "bounds": [
+        7,
+        0,
+        2,
+        6,
+        -6,
+        6,
+        -6,
+        -6,
+        2,
+        -6
+    ],
+    "center": [
+        7,
+        7
+    ],
+    "collisionRadius": 9,
+    "engineSlots": [
+        {
+            "angle": 180,
+            "contrailSize": 64,
+            "length": 8,
+            "location": [
+                -6,
+                0
+            ],
+            "style": "MIDLINE",
+            "width": 3
+        }
+    ],
+    "height": 14,
+    "hullId": "tco_escape_pod",
+    "hullName": "Escape Pod",
+    "hullSize": "FRIGATE",
+    "shieldCenter": [
+        0,
+        0
+    ],
+    "shieldRadius": 14,
+    "spriteName": "graphics/ships/drones/drone_pd.png",
+    "style": "MIDLINE",
+    "viewOffset": 0,
+    "width": 14
+}

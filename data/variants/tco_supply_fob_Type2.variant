@@ -1,0 +1,22 @@
+{
+    "displayName": "Bastion",
+    "fluxCapacitors": 0,
+    "fluxVents": 30,
+    "goalVariant": true,
+    "hullId": "tco_supply_fob",
+    "hullMods": [
+        "heavyarmor",
+        "insulatedengine",
+        "autorepair"
+    ],
+    "modules": [
+        {"WS 004": "tco_fob_module_Type2"},
+        {"WS 002": "tco_fob_module_Type2"},
+        {"WS 003": "tco_fob_module_Type2"},
+        {"WS 001": "tco_fob_module_Type2"}
+    ],
+    "permaMods": [],
+    "sMods": [],
+    "variantId": "tco_supply_fob_Type2",
+    "weaponGroups": []
+}

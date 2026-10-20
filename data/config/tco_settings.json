@@ -1,0 +1,641 @@
+{
+    # Start every battle in RTS mode. false = start in normal Starsector controls.
+    "rtsDefault": true,
+    # In RTS mode the game is told the player sits in an invisible command shuttle instead of the
+    # flagship. That removes the flagship-only overlays (weapon arcs) and lets the flagship be
+    # ordered like any other ship. Set to false if it causes problems.
+    "commandPod": true,
+
+    # Key names are LWJGL names: letters, F1..F12, SPACE, TAB, BACK, etc.
+    "keyToggleMode": "F6",     # switch between RTS mode and normal Starsector controls
+    "keyDirectControl": "H",   # pilot the selected ship yourself; press again to go back to RTS
+    "keyToggleShipAI": "T",    # hand the selected ships to the normal ship AI, or take them back
+    "keyStop": "X",            # selected ships drop their order and stop
+    "keyRetreat": "END",       # selected ships retreat from the battle; any new order calls it off
+    "keyHoldFire": "F",        # selected ships stop / resume firing
+    "keyBoard": "B",           # selected ships with a Boarding Shuttle Bay board the enemy ship under the cursor
+    # Any key below can also be a side mouse button: "MOUSE4", "MOUSE5" (or set it in game, on the controls sheet).
+    "keyFlares": "C",
+    "keyRadar": "N",
+    "keyRadarHold": "M",
+    "keyJammer": "O",
+    "keyRadarUnlock": "K",     # the ship you fly: release the radar lock (right-click on the radar scope does too)
+    "keyHangar": "U",          # selected ships keep their fighters, supply shuttles and repair drones in the hangar, or let them out again
+    "keyStance": "Y",          # cycles the selected ships' stance: aggressive, defensive, hold ground (lasts the battle unless saved)
+    "keyFormation": "L",       # selected ships form a line behind the biggest of them; again for wedge, column, then break up
+    # Ctrl + right click: attack-move (move there, fighting whatever is met on the way).
+    "defaultStance": "DEFENSIVE",  # stance of ships that have none saved: AGGRESSIVE, DEFENSIVE, HOLD, EVASIVE or RESCUE
+    "aggressiveSightRange": 4000,  # an idle aggressive ship goes after enemies this close
+    "evasiveMargin": 500,          # Evasive ships keep this much further away than the enemy's guns reach
+    "defensiveLeash": 1500,        # a defensive ship breaks off a fight this far from where it was left
+    "formationLeash": 800,         # a ship in formation breaks off a fight this far from its slot
+    "attackMoveLeash": 1500,       # a ship on attack-move breaks off a fight this far from where it started
+    # Within this distance of where it is going, a ship slides there on its side and reverse thrusters
+    # without turning (the larger of the two numbers: units, or ship collision radii). Farther, it turns and flies.
+    "slideMin": 200,
+    "slideRadii": 2.5,
+    "formationSlideMin": 300,      # the same for a ship keeping station in formation
+    "formationSlideRadii": 3,
+    # Ship systems that RTS units on passive control use by themselves (by system id; add modded ones):
+    "passiveSystemsDamage": ["damper", "damper_omega"],          # under fire, when taking hull damage or hard flux is high
+    "passiveSystemsShieldToggle": ["fortressshield"],            # on while the shield is up under heavy fire
+    "passiveSystemsFlares": ["flarelauncher", "flarelauncher_active", "flarelauncher_fighter", "flarelauncher_single"],  # missiles inbound
+    "passiveSystemsFlak": ["canister_flak"],                     # missiles or fighters close
+    "keyMarineScreen": "F7",   # on the campaign map: open the marine assignment screen
+    # Not rebindable: Ctrl+1..9 saves the selection as a group, 1..9 selects it (twice quickly
+    # also moves the camera there), Shift+1..9 adds it to the selection.
+    # Shift+right-click queues an order behind the current one.
+    # Right-click and drag: move there, then turn to face the way you dragged.
+    # Shift + right-click and drag: turn to that facing first, then move there while keeping it.
+    # Right-click and drag starting on a selected ship, or Alt + right-drag anywhere: turn in place.
+
+    "cameraPanSpeed": 1400,    # world units per second at zoom 1; scales with zoom
+    "cameraFastMult": 2.5,     # multiplier while holding shift
+    "zoomMin": 0.6,
+    "zoomMax": 8.0,
+
+    # Mode button position: x as a fraction of screen width (centre of the button),
+    # y as pixels down from the top of the screen.
+    "buttonX": 0.5,
+    "buttonTopOffset": 70,
+
+    # ---- Ammo and resupply ----
+    # false switches the whole ammo system off (guns unlimited again, resupply ships do nothing).
+    "ammoEnabled": true,
+    "ballisticFluxMult": 0.4,     # ballistic weapons make this share of their usual flux, since they now need ammo
+    # Ballistic guns get enough rounds for this many seconds of continuous fire.
+    "ammoSeconds": 120,
+    "pdAmmoMult": 2.0,         # point-defence guns get this much more (instead of the size bonus below)
+    "ammoSmallMult": 1.75,     # other small guns get this much more
+    "ammoMediumMult": 1.5,     # medium guns
+    "ammoLargeMult": 1.25,     # large guns
+    "minAmmo": 10,
+    # Seconds a docked shuttle takes to refill a weapon from empty.
+    "gunReloadSeconds": 20,
+    "missileReloadSeconds": 45,
+    "supplyMult": 1.0,         # scales how much stock resupply ships carry (150/300/600/1200)
+    "resupplyRangeMult": 1.0,  # scales resupply range (600/800/1000/1200)
+    # Resupply is delivered by shuttle: one per ship being supplied. false = ships in the radius
+    # are refilled directly, with no shuttles.
+    "supplyShuttles": true,
+    "shuttleCapacity": 80,     # most stock one shuttle carries per trip
+    "shuttleSpeedMult": 0.333, # shuttle speed as a fraction of the stock shuttle hull's (400)
+
+    # ---- Battlefield ----
+    # Map size multiplier per side: 2.0 = twice as wide and twice as tall = 4 times the area.
+    # Campaign battles only.
+    "mapSizeMult": 2.0,
+    # Same, for escape battles, also per side. Vanilla escape maps are 18000 x 18000; 1.5 makes them
+    # 27000 x 27000 (half again as wide and tall, 2.25 times the area).
+    "escapeMapSizeMult": 1.5,
+    # How far apart the two fleets start, as a fraction of the map height (not for escape battles).
+    # 0.7 puts each side 35% of the map away from the centre. Later reinforcements still arrive
+    # from the map edge, as in vanilla.
+    "deployStandoffFraction": 0.7,
+    # Range multiplier for every weapon except point defence. 1.0 switches it off.
+    "weaponRangeMult": 1.5,
+    # Chance that each objective beacon (FOB Control Array, Repair Dock Beacon) is placed in a
+    # battle, rolled for each one separately. Only battles that allow objectives, never escapes.
+    "beaconChance": 0.75,
+    # The same, for battles in Random Assortment of Things' Abyss.
+    "beaconChanceAbyss": 0.25,
+
+    # ---- FOB Control Array objective and the Supply FOB it sets up ----
+    "fobEnabled": true,
+    "outpostsDontHoldBattles": true, # a side with only its Supply FOB / Repair Dock left (no ships, none in reserve) scuttles them, so the battle can end
+    "outpostAbandonSeconds": 5,    # ...after this many seconds
+    "fobCapitalStocks": 5,       # stock, in multiples of a capital resupply ship's stock
+    # How fast a FOB shuttle that has docked with a resupply ship unloads into that ship's stock
+    # (1:1 from the FOB's own stock). Shuttles carry at most shuttleCapacity per trip, so most of the
+    # refill time is flying back and forth: a resupply ship parked close to the FOB fills much faster.
+    # With supplyShuttles off, this is the rate resupply ships in range are refilled at directly.
+    "fobRestockPerSecond": 25,
+    # Stock the FOB regains per second while its side holds the control array.
+    "fobArrayRestockPerSecond": 10,
+    # Seconds after a FOB is destroyed before its side can get a new one (it must hold the array then).
+    "fobRespawnSeconds": 180,
+    # Variants a new FOB is picked from at random, each time one is set up. Every entry must be a
+    # variant of the hull tco_supply_fob; its "modules" block picks the variant in each of the four
+    # sockets (hull tco_fob_module). Entries that can't be found are skipped; if none work, the
+    # mod uses tco_supply_fob_Standard. List an id twice to make it twice as likely.
+    "fobVariants": [
+        "tco_supply_fob_Standard",
+        "tco_supply_fob_Type2",
+        "tco_supply_fob_Type3",
+        "tco_supply_fob_Type4"
+    ],
+
+    # ---- Boarding ----
+    "marinesPerShuttle": 8,
+    # Compact Security Forge: security droids it keeps aboard by hull size (defence only, rebuilt between battles),
+    # each fighting at this share of a marine, for this share of the ship's cargo space.
+    "securityDroidsFrigate": 25,
+    "securityDroidsDestroyer": 50,
+    "securityDroidsCruiser": 100,
+    "securityDroidsCapital": 150,
+    "securityDroidStrength": 0.75,
+    "securityForgeCargoCost": 0.3,
+    "hcShuttleMarineMult": 1.5,    # High-Capacity Shuttles: marines per shuttle x this...
+    "hcShuttleArmorMult": 0.5,     # ...and the shuttles' armor x this
+    "hcShuttleCapacityMult": 1.25, # ...and the ship holds this much more marines
+    "largeBayShuttleMult": 1.5,    # Efficient Boarding Bay: shuttles per wave x this...
+    "efficientBayCooldownMult": 0.5, # ...the wait between waves x this...
+    "efficientBayExtraShuttles": 1,  # ...and this many more shuttles on top
+    # Automated ships (Remnant, Omega, derelicts, ships made automated by AI Switch hullmods...) have
+    # droids instead of marines and crew: a fixed number by size, to board with (with the Boarding
+    # Shuttle Bay or the AI's boarder role) and to defend with. Boarders who beat them reach the AI
+    # core: the player's take an AI core captain home, and with the Automated Ships skill gain the
+    # ship; otherwise it is left disabled and drifting.
+    "droidsFrigate": 20,
+    "droidsDestroyer": 40,
+    "droidsCruiser": 80,
+    "droidsCapital": 160,
+    "droidStrength": 1.25,         # one droid fights like this many marines
+    "droidSModBonus": 0.25,        # extra droids when the Boarding Shuttle Bay is S-modded
+    "boardingLaunchRange": 3000,       # a ship ordered to board closes to this range, then launches
+    "boardingWaveCooldown": 60,        # seconds before the same ship can launch another wave
+    "boardingShuttleSpeedMult": 0.6,   # boarding shuttle speed as a fraction of the stock shuttle hull's (400)
+    "boardingTestMarines": 200,        # marines aboard each boarding ship outside the campaign (missions, simulator)
+    # The fight aboard, once a second: each side loses (the SMALLER side's strength x boardingKillRate
+    # x 0.75-1.25), so numbers only help by lasting longer, not by killing faster.
+    "boardingKillRate": 0.05,
+    "defenderBonus": 1.2,              # defenders hit this much harder on their own ship
+    "crewStrength": 0.02,              # one crew member fights like this fraction of a marine
+    "surrenderCheckSeconds": 5,        # how often a ship with no marines left checks whether its crew gives up
+
+    # ---- Armor: bounces and penetration ----
+    # Only kinetic and high-explosive shells from ballistic weapons. Fragmentation, energy-damage
+    # ballistics, missiles, beams and shield hits are left as in the unmodded game.
+    "armorEnabled": true,
+    # Every ship's armor (not fighters) counts as this many times as strong: as thick against each
+    # hit, and worn away this much more slowly. 1.0 switches it off. Works with armorEnabled off too.
+    "armorBoost": 1.0,
+    # Explosive Reactive Armor hullmod: every armor cell holds a few tile charges, by hull size. An HE
+    # missile hitting a charged cell does eraMissileDamageMult of its damage (0 = stopped), an HE shell
+    # eraShellDamageMult; each uses one charge. A cell that runs out reloads itself once,
+    # eraReloadSeconds later; after that only a fleet tender or Repair Dock can rearm it (its last
+    # priority; repairPartsEra parts and eraRearmSeconds per 3x3 patch). eraManeuverPenalty is the
+    # share of acceleration, deceleration and turning lost (vanilla Heavy Armor's, S-modded, is 0.25).
+    "eraChargesFrigate": 1,
+    "eraChargesDestroyer": 1,
+    "eraChargesCruiser": 2,
+    "eraChargesCapital": 2,
+    "eraMissileDamageMult": 0.0,
+    "eraShellDamageMult": 0.1,
+    "eraReloadSeconds": 10,
+    "eraRearmSeconds": 5,
+    "repairPartsEra": 2,
+    # Tiles sit on the armor. A non-HE hit on a cell (and the eight around it) whose armor is below
+    # eraTileRiskFraction of what it was when its tiles were fitted blows them off with
+    # eraTileRiskChance; below eraTileLossFraction it always does. Lost tiles don't reload themselves.
+    "eraTileRiskFraction": 0.7,
+    "eraTileRiskChance": 0.25,
+    "eraTileLossFraction": 0.5,
+    "eraManeuverPenalty": 0.25,
+    # Composite Armor Replacement hullmod: kinetic and high-explosive shells and missiles do
+    # compositeDamageMult of their damage; armor points x compositeArmorMult; speed and maneuverability
+    # + compositeMobilityBonus. With ERA as well, an HE hit gets only the stronger of the two cuts.
+    "compositeDamageMult": 0.7,
+    "compositeArmorMult": 0.9,
+    "compositeMobilityBonus": 0.05,
+    # Spall Lining hullmod: shells penetrate spallPenetrationMult as well; maneuverability - spallManeuverPenalty.
+    "spallPenetrationMult": 0.7,
+    "spallManeuverPenalty": 0.05,
+    # Penetration = shot damage x a speed factor (0.6-1.6, 1.0 at speed 700) x one of these, compared
+    # with the armor under the hit (thicker when hit at a slant).
+    "kineticPenFactor": 2.5,
+    "hePenFactor": 0.6,
+    # A penetrating shell: this share of its damage goes straight to the hull, and this share is
+    # dealt to the armor the normal way.
+    # A penetrating shell puts this share of its damage straight into the hull: penHullMin when it
+    # barely gets through, + penHullPerRatio for each unit it overmatches the armor by, up to
+    # penHullMax. An HE shell that gets through bursts inside: x heBehindArmorMult.
+    "penHullMin": 0.25,
+    "penHullPerRatio": 0.25,
+    "penHullMax": 0.6,
+    "heBehindArmorMult": 1.5,
+    # Shell speed counts as (speed / 700) to this power in its penetration (1 = in proportion).
+    "penSpeedExponent": 1.0,
+    # Armor hit at a slant counts as thicker (thickness / cos of the angle) in the damage it lets through.
+    "armorAngleEnabled": true,
+    # Vanilla always lets at least 15% of a hit through armor. For a shell that cannot penetrate,
+    # that minimum drops: smallCaliberFloor at or below floorRatioLow of the penetration needed,
+    # back to the normal minimum at floorRatioHigh.
+    "smallCaliberFloor": 0.05,
+    "floorRatioLow": 0.3,
+    "floorRatioHigh": 0.8,
+    # Cook-off, weapon-wreck and fire chances are scaled by the shell: full when its penetration is
+    # at least cookoffCaliberRef x the ship's armor rating, less for smaller shells.
+    "cookoffCaliberRef": 0.5,
+    "penArmorFraction": 0.15,
+    # Deflection: no chance below bounceStartAngle (0 = square on), rising to bounceMaxChance at
+    # bounceFullAngle and beyond. Less likely the more the shot outclasses the armor.
+    "bounceStartAngle": 45,
+    "bounceFullAngle": 80,
+    "bounceMaxChance": 0.7,
+    "heBounceMult": 0.4,               # high explosive deflects this much as often as kinetic
+    "shatterShare": 0.25,              # share of deflections where the shell breaks up and does nothing
+    "ricochetArmorFraction": 0.15,     # damage a ricochet still does to the armor it glanced off
+    "ricochetShellFraction": 0.5,      # damage the deflected shell carries on with
+    # Where less than this share of the armor is left under the hit, the normal game rules apply.
+    "armorMinFraction": 0.05,
+    # Floating text on every ricochet, shatter, penetration and magazine detonation, plus (at most twice
+    # a second per ship) the numbers behind hits that did none of those. For testing.
+    "armorDebugText": true,
+    # In the refit screen, write TCO's lines on weapon cards for the ship being refitted (its damage,
+    # shell-speed and ammo bonuses counted). Needs LunaLib. On automatically with Unthemed Weapons
+    # Collection (whose refit numbers are ship-adjusted too); refitShipCardsAlways turns it on without it.
+    "refitShipCards": true,
+    "refitShipCardsAlways": false,
+    "hitTextInterval": 0.7,       # at most one line of hit text per ship in this many seconds
+
+    # ---- Magazine cook-off ----
+    # A penetrating shell, or any kinetic / high-explosive shell landing where the armor is already
+    # below armorMinFraction, can set off the ammunition of a ballistic or missile weapon near where it
+    # went in (within 50 / 70 / 100 units for small / medium / large mounts, times cookoffReachMult).
+    # Chance = cookoffChance x how full the magazine is (x1.5 for missiles). The weapon is destroyed
+    # and the blast does (cookoffDamage for its size x fullness, x1.5 for missiles) to the hull
+    # directly, plus a quarter of that to the armor around the mount. One shell rolls for one weapon
+    # only (the closest in reach), and a weapon rolls at most once every cookoffRollInterval seconds.
+    "cookoffEnabled": true,
+    "cookoffChance": 0.25,
+    "cookoffReachMult": 1.0,
+    "cookoffRollInterval": 3,     # seconds before the same weapon can roll for a cook-off again
+    # Energy weapons have no magazine to go up, but the same kind of hit can wreck one for good
+    # (until a tender repairs it), with no blast or fire. Same rules: the closest weapon only, at
+    # most once per cookoffRollInterval. 0 switches it off.
+    "energyDamageChance": 0.05,
+    "cookoffDamageSmall": 300,
+    "cookoffDamageMedium": 700,
+    "cookoffDamageLarge": 1500,
+
+    # ---- Fires ----
+    # A magazine cook-off may start a fire where it went up; a shell that breaches the hull may
+    # start a smaller one, less often. They burn for a random fireMinSeconds-fireMaxSeconds, damage
+    # the hull every second and go out by themselves. A fire alone never destroys a ship: it stops
+    # doing damage once the hull is down to fireHullFloor.
+    "firesEnabled": true,
+    "fireChanceCookoff": 0.6,
+    "fireChanceBreach": 0.15,
+    "fireMinSeconds": 3,
+    "fireMaxSeconds": 10,
+    "fireHullPctBig": 0.015,      # share of the ship's max hull per second, fire from a cook-off
+    "fireHullPctSmall": 0.005,    # share of the ship's max hull per second, fire from a breach
+    "fireMaxPerShip": 3,          # fires burning at once on one ship
+    "fireHullFloor": 500,         # fires do no more damage once the hull is at or below this
+
+    # ---- Ship deaths ----
+    # A ship whose hull runs out doesn't explode at once: it goes through its death throes for a
+    # random time between the min and max for its size (seconds). Systems fail, it coasts on its momentum,
+    # explosions break out all over the hull, and its escape pods get away one by one; then it is
+    # destroyed the normal way. Stations, modules, fighters, the Supply FOB and Repair Dock die as normal.
+    "deathThroesEnabled": true,
+    "deathFrigateMin": 3,
+    "deathFrigateMax": 5,
+    "deathDestroyerMin": 3,
+    "deathDestroyerMax": 5,
+    "deathCruiserMin": 4,
+    "deathCruiserMax": 7,
+    "deathCapitalMin": 4,
+    "deathCapitalMax": 7,
+
+    # ---- Missiles ----
+    # Every guided missile launcher, from any mod, is sorted into IR or radar guidance. Missiles that
+    # don't steer (rockets, bombs, mines) are unguided. Declared heat-seekers (vanilla's Salamander and
+    # the like, which hunt engines) are IR engine-seekers. Every other guided launcher is IR up to
+    # irMaxRange (its normal range, before TCO's range bonus; 1500 is where vanilla's SRMs end) and
+    # radar beyond. Single launchers can be forced in data/config/tco_missile_guidance.csv.
+    "irMaxRange": 1500,
+    # IR lock: every ship has a heat signature, 0-1: 0.1 for the hull, up to 0.5 more for running
+    # engines (all working and thrusting; idle engines count 60%, damaged ones less, flamed out none;
+    # seen from behind x1.3, from the front x0.75), up to 0.5 more for flux (venting = full).
+    # Twice a second an IR missile homing on a ship loses it with chance
+    # (irLoseThreshold - heat) x irLoseRate, so a hot target is never lost. A missile with no lock flies
+    # straight on and looks ahead for heat (ships and flares), finding each with a chance equal to its heat.
+    "irLockEnabled": true,
+    "irLoseThreshold": 0.45,
+    "irLoseRate": 1.2,
+
+    # ---- Flares ----
+    # Every ship carries flares by hull size (more with the Expanded Countermeasures Dispenser: ecdFrigateMult
+    # on frigates, ecdOtherMult on the rest) and drops a salvo of flareSalvo<Size> at a time, at most every
+    # flareCooldown seconds. The ship you fly drops them on the flare key; every other ship drops them by
+    # itself when an IR missile homing on it is within flareThreatRange (your own ships only if
+    # flaresAutoPlayer), at most every flareAutoCooldown seconds. A flare burns flareLife seconds. Each IR
+    # missile gets one roll per flare within flareRange in front of it: from flareChanceCold against a cold
+    # target down to flareChanceHot against a hot one (x 0.5-1 for the flare's age, less with ECCM).
+    # Launchers with the IGNORES_FLARES hint ignore them. Radar and unguided missiles are never decoyed.
+    "flaresEnabled": true,
+    "flaresFrigate": 30,
+    "flaresDestroyer": 60,
+    "flaresCruiser": 90,
+    "flaresCapital": 120,
+    "flareSalvoFrigate": 2,
+    "flareSalvoDestroyer": 3,
+    "flareSalvoCruiser": 4,
+    "flareSalvoCapital": 5,
+    "ecdFrigateMult": 2.0,
+    "ecdOtherMult": 1.5,
+    "flareLife": 3.5,
+    "flareCooldown": 0.3,
+    "flareAutoCooldown": 2.5,
+    "flaresAutoPlayer": true,
+    "flareThreatRange": 1200,
+    "flareRange": 700,
+    "flareChanceCold": 0.95,
+    "flareChanceHot": 0.25,
+    # IRCCM hullmod: IR missiles fired by the ship (or its fighters) never lose a cold target by themselves,
+    # and each flare decoys them with irccmChanceCold x (1 - targetHeat)^2, plus irccmBlanketPerFlare for every
+    # enemy flare past irccmBlanketStart burning within irccmBlanketRadius of the missile (at most
+    # irccmChanceMax). A missile that did lose its target notices flares irccmSeekFlareMult as well.
+    "irccmChanceCold": 0.55,
+    "irccmBlanketStart": 6,
+    "irccmBlanketPerFlare": 0.03,
+    "irccmBlanketRadius": 500,
+    "irccmChanceMax": 0.6,
+    "irccmSeekFlareMult": 0.3,
+    # Ships with a flare-launcher ship system (vanilla or modded: any system whose weapon fires flares)
+    # get flareReloads full reloads of their flares instead. They reload by themselves when they run dry;
+    # the player flying the ship can also press the system key to reload early. Off: flare systems work
+    # as the game made them (their flares still fool IR missiles only).
+    "flareSystemReloads": true,
+    "flareReloads": 2,
+
+    # ---- Radar ----
+    # Every ship (not fighters, drones or craft) has a radar reaching radarRangeMult x its sight range against a
+    # capital-sized target. Radar cross section (RCS) by size: rcs<Size>; stations at least 2x a capital; x ramRcsMult
+    # with Radar Absorbing Materials; 0 while phased. A radar of power P and range R finds a target of RCS s out to
+    # R x sqrt(P x s): a frigate (0.4) at 63% of the range, a RAM frigate at 40%. Power is 1, x aesaRadarPower with
+    # the AESA Radar hullmod, radarStationPower for stations. Ships with Datalink Integration add their radars up (the
+    # signals of every linked radar on a target are summed) and share every track the network holds.
+    # Radar missiles only launch at a target the launcher tracks (itself, or its datalink); in flight, losing the
+    # track they coast straight on, and if it doesn't come back within radarGraceSeconds they are dumb for good.
+    # radarMissileRangeMult multiplies radar missiles' range (launcher range and flight time; applies after a restart).
+    # radarFeedsAi: radar contacts count as seen for the game's own fog of war, which the AI goes by.
+    # In RTS mode the player's contacts outside sight show as pings, refreshed every radarPingInterval seconds.
+    "radarEnabled": true,
+    "radarRangeMult": 4.0,
+    "rcsFighter": 0.15,
+    "rcsSmallCraft": 0.12,    # drones, shuttles, shuttle pods, escape pods
+    "rcsFrigate": 0.4,
+    "rcsDestroyer": 0.6,
+    "rcsCruiser": 0.8,
+    "rcsCapital": 1.0,
+    "ramRcsMult": 0.4,
+    "ramArmorHullMult": 0.9,
+    "aesaRadarPower": 1.5,
+    "radarStationPower": 2.0,
+    "radarGraceSeconds": 2,
+    # Radar missiles flown by vanilla's guided-missile AI (pure pursuit, which ends up tail-chasing and looping on
+    # long flights) get TCO's lead guidance instead: they steer for where the target will be.
+    "radarLeadGuidance": true,
+    # Radar missiles are never launched at small craft (fighters, drones, shuttles), unless the launcher is
+    # anti-fighter or point defence. The player's ships hold their radar missiles until released with the hold
+    # key when radarHoldDefault is on.
+    "radarHoldDefault": true,
+    "radarMissileRangeMult": 2.0,
+    "radarFeedsAi": true,
+    "radarFireBeyondSight": true,  # your side's autofiring radar launchers fire at radar tracks beyond sight (the game's AI only sees what is in sight)
+    "radarPingInterval": 1.0,
+    # Radar scope, bottom right, while you pilot a ship: north up, out to the ship's radar range against a capital,
+    # with the returns its radar (or datalink) holds. Click a blip to lock it (not small craft). radarScopeSize is the
+    # diameter; radarScopeRight / radarScopeBottom its distance from the screen edges (move it up if it covers the HUD).
+    "radarScope": true,
+    "radarScopeSize": 230,
+    "radarScopeRight": 20,
+    "radarScopeBottom": 250,
+    # ECM Package: jams ecm<Size> incoming radar missiles at a time (homing on the ship, or on a friend within
+    # ecmRange) within ecmRange, costing ecmPowerPerMissile of the reactor's capacity per second each. Once a second
+    # each may be spoofed: chance ecmSpoofChance x (1 - ecmRcsWeight x RCS of its target), x eccmSpoofMult if the
+    # launcher has the ECCM Package. A spoofed missile has lost its track while it stays jammed.
+    "ecmEnabled": true,
+    "ecmFrigate": 1,
+    "ecmDestroyer": 2,
+    "ecmCruiser": 3,
+    "ecmCapital": 3,
+    "ecmRange": 1500,
+    "ecmPowerPerMissile": 0.03,
+    "ecmSpoofChance": 0.6,
+    "ecmRcsWeight": 0.6,
+    "eccmSpoofMult": 0.7,
+    # Noise jamming (ECM Package): a cloud of radar noise jamRadius<Size> around the ship. A radar needs a signal of
+    # 1 + noise to pick out a target in it; noise is jamNoise at the jammer, fading to 0 at the edge, summed over the
+    # target's side's jammers (at most jamNoiseMax). Radars close to a target burn through. Costs jamPowerPerSecond
+    # of the reactor's capacity per second. Automatic for the AI (and the player's ships unless set otherwise):
+    # on while an enemy radar could find the ship or radar missiles are coming for it or a friend nearby, only above
+    # jamStartPower of its power, off below jamStopPower.
+    "jamEnabled": true,
+    "jamRadiusFrigate": 1200,
+    "jamRadiusDestroyer": 1500,
+    "jamRadiusCruiser": 1800,
+    "jamRadiusCapital": 2200,
+    "jamNoise": 6,
+    "jamNoiseMax": 10,
+    "jamPowerPerSecond": 0.025,
+    "jamStartPower": 0.55,
+    "jamStopPower": 0.3,
+    # Nebula clouds weaken radar: the signal x nebulaSignalMult for each of the radar, the midpoint and the target
+    # that is inside a cloud.
+    "nebulaSignalMult": 0.5,
+    # Radar missiles on TCO's lead guidance steer around asteroids.
+    "missileAvoidAsteroids": true,
+
+    # ---- Fog of war ----
+    # In RTS mode the map outside what your side's ships can see is covered by a dark shadow, and
+    # enemy ships in it are hidden (you can't select or order attacks on them). Each ship sees as far
+    # as the game's own combat sight range (3000, more with sensor bonuses), the same range the AI
+    # uses. An enemy that slips back into the fog leaves a fading "last seen" marker for
+    # fogLastSeenSeconds. fogDarkness: 0 = no shadow, 1 = black.
+    # sightRangeMult scales every ship's combat sight range, both sides, in every mode: it is the
+    # same stat the game's own fog (what the AI knows about) uses.
+    "fogOfWar": true,
+    # Also while piloting a ship or on normal controls (no shading there): enemy ships and their reticles beyond
+    # what your side can see are hidden.
+    "fogHideWhenPiloting": true,
+    "sightRangeMult": 0.8,
+    "fogDarkness": 0.6,
+    "fogLastSeenSeconds": 20,
+
+    # ---- Escape pods ----
+    # A lost crewed ship ejects pods carrying a random podSurvivorsMin-podSurvivorsMax share of everyone
+    # aboard, crew and marines (at most 0.75, so with the game's own wreck recovery no more than the
+    # whole crew can come back), spread unevenly over the pods. Each side only rescues its own
+    # pods: any of its ships passing within podPickupRadius scoops one up, and ships with a Repair
+    # Tender Bay or Boarding Shuttle Bay send up to podShuttlesPerShip rescue shuttles after pods within
+    # podRescueRange (not while their hangar is held). The player's rescued crew go back to the cargo
+    # after the battle; each pod still drifting at the end is found in the post-battle recovery report
+    # with podLeftoverChance if the player wins, otherwise lost.
+    "podsEnabled": true,
+    "podDistressSignal": true,     # your pods are marked anywhere on the map (green ring and ping); others while in sight
+    "podsFrigate": 4,
+    "podsDestroyer": 6,
+    "podsCruiser": 8,
+    "podsCapital": 12,
+    "podSurvivorsMin": 0.25,
+    "podSurvivorsMax": 0.75,
+    "podDriftSpeed": 30,
+    "podPickupRadius": 40,
+    "podRescueRange": 2500,
+    "podShuttlesPerShip": 2,
+    "podLeftoverChance": 0.5,
+
+    # ---- Repair Dock Beacon objective and the Repair Dock it sets up ----
+    # Capturing the beacon puts a Repair Dock (an unarmed, heavily armoured station) behind your
+    # lines. It works like a fleet tender, with its own drones and spare parts. A destroyed dock is
+    # replaced after dockRespawnSeconds if the side still holds the beacon.
+    "dockEnabled": true,
+    "dockRange": 1200,             # drone reach, from the edge of the dock
+    "dockDrones": 120,             # repair drones (a capital tender has 60)
+    "dockHoldRate": 0.8,           # how fast it brings stranded friendly ships in its reach to a stop (share of speed per second)
+    "dockParts": 4800,             # spare parts (a capital tender has 600)
+    # Friendly fleet tenders within the dock's reach are restocked from its own stock:
+    "dockRestockPartsPerSecond": 20,  # spare parts per second, up to the tender's normal load
+    "dockDroneRestockSeconds": 5,     # one lost drone replaced every this many seconds
+    # While its side holds the beacon, the dock itself is restocked (up to its starting stock):
+    "dockBeaconPartsPerSecond": 10,
+    "dockBeaconDroneSeconds": 10,     # one drone every this many seconds
+    "dockDronesPerShipMult": 2,    # drones it may put on one ship, times a tender's limit (2 per frigate/destroyer, 4 per cruiser/capital)
+    "dockRespawnSeconds": 180,
+    "dockExplosionScale": 0.3,    # size of its death blast compared with a normal ship of its size
+
+    # ---- Tug Rig ----
+    # A tug takes a stranded friendly ship (reactor down or every engine out) in tow and drags it to
+    # a Repair Dock, else a working tender, else a Supply FOB, else a supply ship. At a dock or tender
+    # it lets go once the drones can reach; at a FOB or supply ship it stops and holds the tow.
+    # RTS: select the tug and right click the stranded ship. Move orders steer it; any other order (Stop) lets go.
+    "tugAutoRange": 4000,          # tugs flown by the AI go after stranded ships this close
+    "tugMinSpeedMult": 0.25,       # the slowest a tug gets, however heavy its load
+    "tugPullStrength": 1.5,        # tug speed while towing = its share of the combined mass x this (capped at full speed)
+    "towLength": 300,              # tow cable length, between the two hulls
+
+    # ---- Fleet tenders and permanent damage ----
+    "repairEnabled": true,
+    # Repair drones a tender carries, by its hull size. They are reused; only drones shot down are lost.
+    "repairDronesFrigate": 6,
+    "repairDronesDestroyer": 12,
+    "repairDronesCruiser": 24,
+    "repairDronesCapital": 60,
+    "repairRangeMult": 1.0,        # tender radius: 600/800/1000/1200 by hull size, times this
+    "repairDroneSpeedMult": 1.0,   # drone speed as a fraction of 180
+    "armorRepairCap": 0.35,        # armor is patched back up to this share of its original value, no higher
+    "armorRepairRate": 0.06,       # per second, as a share of a cell's full armor, for the 3x3 cells a drone works on
+    # Spare parts a tender carries, by its hull size. Every repair uses some; with none left the
+    # tender sends no more drones.
+    "repairPartsFrigate": 60,
+    "repairPartsDestroyer": 120,
+    "repairPartsCruiser": 240,
+    "repairPartsCapital": 600,
+    "repairPartsWeaponSmall": 4,   # parts per repair job
+    "repairPartsWeaponMedium": 8,
+    "repairPartsWeaponLarge": 15,
+    "repairPartsEngine": 5,
+    "repairPartsArmor": 3,         # per 3x3 armor patch
+    "repairPartsReactor": 20,      # restarting a melted-down reactor
+    # Seconds a drone needs to restart a melted-down reactor, by the size of the ship.
+    "reactorRepairFrigate": 12,
+    "reactorRepairDestroyer": 16,
+    "reactorRepairCruiser": 22,
+    "reactorRepairCapital": 30,
+
+    # ---- Power capacity and reactors ----
+    # Power is a second reserve next to flux. It starts full, is drawn by shield hits and weapons
+    # firing, and regenerates. With none left, energy weapons cannot fire and shields cannot be
+    # raised until it is back to powerRestartFraction. Ballistic and missile weapons fire whenever
+    # there is enough power for the shot.
+    "powerEnabled": true,          # Off: no reactor power (energy weapons and shields run on flux as in vanilla, no power bars); meltdowns follow their own switch
+    "powerCapacityMult": 3.0,      # power capacity = flux capacity x this (a big reserve)
+    "powerRegenMult": 0.6,         # power regenerated per second = flux dissipation x this (unhurried)
+    "powerShieldMult": 0.75,       # power drawn per point of flux a shield hit causes
+    "powerEnergyMult": 1.0,        # energy weapons: power drawn per point of flux the shot costs
+    "powerKineticBeamMult": 0.1,
+    "powerBallisticMult": 0.5,     # ballistic weapons: power drawn per point of flux the shot makes (after ballisticFluxMult)
+    "powerShotSmall": 2,           # missile launchers (they make no flux): power per shot, by mount size
+    "powerShotMedium": 4,
+    "powerShotLarge": 8,
+    "powerRestartFraction": 0.05,  # share of capacity needed before shields and energy weapons work again
+    "powerReticle": true,          # a power bar under every ship's friend-or-foe reticle (yours, allies, enemies)
+    "powerReticleGap": 6,          # its gap below the reticle and its thickness, in screen pixels
+    "powerReticleThickness": 4,
+    "powerHud": false,             # the older bar next to the flagship panel, bottom left
+    "powerHudX": 249,              # the bar stands upright next to the game's hull and flux bars, bottom left;
+    "powerHudY": 3,                # its position (bottom of the bar) and height on screen
+    "powerHudHeight": 197,
+    # Reactor meltdown: a penetrating shell whose path passes through the reactor (in the middle
+    # of the ship) may knock it out for good. The ship overloads, its engines go out and it has no
+    # power until a fleet tender's drone restarts the reactor. The meltdown does no damage itself.
+    "reactorMeltdownEnabled": true, # Deep hits can knock out the reactor: engines and shields out until a tender fixes it (works with power off too)
+    "reactorMeltdownChance": 0.35,       # chance once a shell reaches the reactor
+    "reactorMinDamage": 80,              # hull damage the shell must do to wreck the reactor, the same for every ship
+    "reactorDepthPerRatio": 100,         # how far a shell gets inside, per unit by which it beat the armor
+    "reactorRadiusMult": 1.0,            # reactor size: 10/14/18/24 units by hull size, times this
+    "reactorOverloadSeconds": 6,
+    # After a meltdown the ship runs on emergency power: it recharges at this share of the normal rate,
+    # up to this share of capacity. Only guns, missiles and small energy point defence can use it.
+    "reactorEmergencyRegenMult": 0.1,
+    "reactorEmergencyCapMult": 0.1,
+    # Power-aware AI, for every ship the AI flies: enemies, allies, and your RTS units on default AI.
+    "powerAiEnabled": true,
+    "powerAiShieldReserve": 0.25,  # ships with a shield keep this share of power for it; guns and energy weapons spend only what is above
+    "powerAiLow": 0.35,            # below this share, only the main weapon groups fire
+    "powerAiBackOff": 0.15,        # below this (or out of power), shielded ships pull back and stop pursuing...
+    "powerAiRecover": 0.4,         # ...until power is back to this share
+    # Logistics AI, for ships the game's AI flies (not your ships while RTS mode is on).
+    "logisticsAiEnabled": true,
+    "logisticsStationDepth": 0.6,  # support ships keep station this share of their radius behind their own line
+    "logisticsAmmoLow": 0.3,       # a ship below this share of its ammo goes to a supply ship...
+    "logisticsAmmoDone": 0.85,     # ...and returns to the fight once back to this share
+    "logisticsRepairParts": 2,     # a ship with this many destroyed weapons or engines goes to a tender
+    "logisticsRestockDone": 0.8,   # a supply ship restocking at a FOB goes back to its station at this share of its stock
+    # TCO's hullmods on NPC ships (enemies and allies; never your fleet), fitted when a fleet is
+    # first built, paid for with capacitors and vents. Every fleet of npcSupportMinFleet or more ships
+    # gets at least one Munitions Resupply Bay and one Repair Tender Bay (one each per supportShipsPer);
+    # military fleets get boarders and maybe a tug; the combat hullmods come by chance.
+    "npcHullmodsEnabled": true,
+    "opBonusPercent": 10,          # every ship (yours and NPCs') gets this % more ordnance points, room for TCO's hullmods (0 = off)
+    "npcHullmodChanceMult": 1.0,   # scales the chances of the boarding bay, tug and combat hullmods
+    "npcSupportMinFleet": 2,       # fleets with fewer ships get no required supply ship and tender
+    "npcDeploySupport": true,      # the enemy always has a supply ship and a tender on the field, if it has them in reserve
+    # Support roles for AI fleets (enemies and allies; never your own ships), now the backup for fleets
+    # short of bays (from before TCO fitted NPC ships). For one battle only,
+    # some of their ships work as if they had a Munitions Resupply Bay or a Repair Tender Bay.
+    "supportRolesEnabled": true,
+    "supportMinFleet": 4,          # fleets with fewer ships get no roles
+    "supportShipsPer": 8,          # one supply ship and one tender per this many ships (at least one each)
+    "supportLogisticsChance": 0.75, # chance for each logistics hull (civilian, freighter, tanker...) to be picked first
+    # AI boarding: AI fleets (enemies and allies) get boarders, the cheapest warships, one per
+    # boarderShipsPer ships. They launch at weak targets in range when a wave can win with this margin.
+    "aiBoardingEnabled": true,
+    "boarderShipsPer": 8,
+    "aiBoardingMargin": 1.3,
+    # Numbers and ground: of the attackers beyond the defenders' number, this share still gets at them
+    # (other corridors); each section held beyond the entry adds to the attack, up to +this at the bridge;
+    # defenders down to a quarter and outnumbered this many to one may lay down their arms (chance a second).
+    "boardingFlankShare": 0.5,
+    # The unknowns: garrisons range from green to elite (x 1 -/+ this); something happens aboard about this
+    # often (bulkheads blown, ambushes, counterattacks, armories, mutinies, fires); and losing defenders
+    # rarely rig the magazine or reactor (chance per event, more with an aggressive or reckless captain).
+    "garrisonQualitySpread": 0.3,
+    "boardingLogPanel": true,      # what happens aboard shows in a log over the boarded ship (off: combat messages)
+    "boardingLogLines": 6,         # lines in that log
+    "boardingEventSeconds": 12,
+    "boardingDesperateChance": 0.06,
+    "boardingDeckAttackBonus": 1.0,
+    "boardingRoutRatio": 4,
+    "boardingRoutChance": 0.2,
+    # Boarding orders (B over a ship your marines are aboard, or Ctrl+B): attack and own losses.
+    "assaultAttackMult": 1.5,
+    "assaultLossMult": 1.5,
+    "methodicalAttackMult": 0.65,
+    "methodicalLossMult": 0.6,
+    "withdrawDelay": 3,            # seconds before a Withdraw order pulls the boarders out (time to cancel)
+    # Marine experience (the game's own, 0-100%): full experience gives this much more attack, and
+    # this much fewer losses, in boarding. AI marines fight at a fixed level.
+    "boardingXpAttack": 0.5,
+    "boardingXpLosses": 0.4,
+    "aiMarineXpLevel": 0.2,
+    "boardingXpPerSurvivor": 0.25, # experience each of your boarders who lived adds (1 = one marine's worth; your level is experience / marines)
+    # When an engine nozzle is knocked out, chance it stays out until a drone repairs it. Never more
+    # than enginePermanentCap of a ship's nozzles are out for good.
+    "enginePermanentChance": 0.35,
+    "enginePermanentCap": 0.4
+}

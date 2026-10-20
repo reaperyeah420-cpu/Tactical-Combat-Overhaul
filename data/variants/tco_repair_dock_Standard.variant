@@ -1,0 +1,16 @@
+{
+    "displayName": "Repair Dock",
+    "fluxCapacitors": 0,
+    "fluxVents": 0,
+    "goalVariant": true,
+    "hullId": "tco_repair_dock",
+    "hullMods": [
+        "heavyarmor",
+        "reinforcedhull",
+        "blast_doors"
+    ],
+    "permaMods": [],
+    "sMods": [],
+    "variantId": "tco_repair_dock_Standard",
+    "weaponGroups": []
+}

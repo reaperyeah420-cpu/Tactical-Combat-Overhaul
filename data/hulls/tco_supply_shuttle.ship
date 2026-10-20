@@ -1,0 +1,56 @@
+{
+    "bounds": [
+        14,
+        0,
+        8,
+        15,
+        -13,
+        15,
+        -13,
+        -15,
+        8,
+        -15
+    ],
+    "center": [
+        16,
+        15
+    ],
+    "collisionRadius": 19,
+    "engineSlots": [
+        {
+            "angle": 180,
+            "contrailSize": 64,
+            "length": 14,
+            "location": [
+                -13,
+                6
+            ],
+            "style": "MIDLINE",
+            "width": 4
+        },
+        {
+            "angle": 180,
+            "contrailSize": 64,
+            "length": 14,
+            "location": [
+                -13,
+                -6
+            ],
+            "style": "MIDLINE",
+            "width": 4
+        }
+    ],
+    "height": 30,
+    "hullId": "tco_supply_shuttle",
+    "hullName": "Supply Shuttle",
+    "hullSize": "FRIGATE",
+    "shieldCenter": [
+        0,
+        0
+    ],
+    "shieldRadius": 14,
+    "spriteName": "graphics/ships/munitions_drone.png",
+    "style": "MIDLINE",
+    "viewOffset": 0,
+    "width": 32
+}

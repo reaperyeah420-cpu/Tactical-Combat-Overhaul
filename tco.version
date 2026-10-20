@@ -1,0 +1,11 @@
+{
+	"masterVersionFile":"https://raw.githubusercontent.com/reaperyeah420-cpu/Tactical-Combat-Overhaul/main/tco.version",
+	"modName":"Tactical Combat Overhaul",
+	"modVersion":
+	{
+		"major":0,
+		"minor":30,
+		"patch":0
+	},
+	"directDownloadURL":"https://github.com/reaperyeah420-cpu/Tactical-Combat-Overhaul/releases/download/v0.30.0/Tactical.Combat.Overhaul.0.30.0.zip"
+}

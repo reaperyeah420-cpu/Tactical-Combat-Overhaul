@@ -1,0 +1,27 @@
+{
+    "displayName": "Naval",
+    "fluxCapacitors": 0,
+    "fluxVents": 9,
+    "goalVariant": true,
+    "hullId": "tco_supply_fob",
+    "hullMods": [
+        "operations_center",
+        "converted_hangar",
+        "nav_relay"
+    ],
+    "modules": [
+        {"WS 004": "tco_fob_module_Type4"},
+        {"WS 002": "tco_fob_module_Type4"},
+        {"WS 003": "tco_fob_module_Type4"},
+        {"WS 001": "tco_fob_module_Type4"}
+    ],
+    "permaMods": [],
+    "sMods": [],
+    "variantId": "tco_supply_fob_Type4",
+    "weaponGroups": [],
+    "wings": [
+        "broadsword_wing",
+        "gladius_wing",
+        "hoplon_wing"
+    ]
+}

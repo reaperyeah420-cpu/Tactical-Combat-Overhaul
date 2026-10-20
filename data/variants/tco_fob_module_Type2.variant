@@ -1,0 +1,33 @@
+{
+    "displayName": "Bastion",
+    "fluxCapacitors": 10,
+    "fluxVents": 10,
+    "goalVariant": true,
+    "hullId": "tco_fob_module",
+    "hullMods": [
+        "heavyarmor",
+        "insulatedengine",
+        "autorepair",
+        "armoredweapons",
+        "turretgyros",
+        "advancedshieldemitter"
+    ],
+    "permaMods": [],
+    "sMods": [],
+    "variantId": "tco_fob_module_Type2",
+    "weaponGroups": [
+        {
+            "autofire": true,
+            "mode": "LINKED",
+            "weapons": {"WS 001": "hellbore"}
+        },
+        {
+            "autofire": true,
+            "mode": "LINKED",
+            "weapons": {
+                "WS 002": "hveldriver",
+                "WS 003": "hveldriver"
+            }
+        }
+    ]
+}

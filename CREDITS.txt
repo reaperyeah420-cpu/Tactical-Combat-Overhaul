@@ -1,0 +1,15 @@
+Tactical Combat Overhaul - credits and third-party material
+============================================================
+
+GraphicsLib, by Harrison Snodgrass (DarkRevenant)
+  The look of TCO's shipboard fires (tco.armor.Fires) is adapted from GraphicsLib's
+  burning-wreck flames (org.dark.graphics.plugins.ShipDestructionEffects): the particle recipe,
+  its sizes, timings and colour blending, and its use of each hull style's explosion colour.
+  Changes made: the effect is rewritten for TCO's own fires, pinned to a point on the hull,
+  with its own fire size and fade-out, and it reads the colours itself so GraphicsLib is not
+  required.
+  GraphicsLib (c) 2014 by Harrison Snodgrass is licensed under CC BY 4.0:
+  https://creativecommons.org/licenses/by/4.0/
+
+Thanks to qcwxezda (Unthemed Weapons Collection), whose refit-screen weapon numbers inspired
+TCO's ship-adjusted weapon cards. No code or assets from it are used.

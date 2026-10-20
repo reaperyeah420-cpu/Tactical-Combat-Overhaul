@@ -1,0 +1,24 @@
+{
+    "displayName": "Up-Armoured",
+    "fluxCapacitors": 0,
+    "fluxVents": 8,
+    "goalVariant": true,
+    "hullId": "tco_fob_module",
+    "hullMods": [
+        "heavyarmor",
+        "reinforcedhull",
+        "blast_doors",
+        "armoredweapons"
+    ],
+    "permaMods": [],
+    "sMods": [],
+    "variantId": "tco_fob_module_Standard",
+    "weaponGroups": [{
+        "autofire": true,
+        "mode": "LINKED",
+        "weapons": {
+            "WS 002": "dualflak",
+            "WS 003": "dualflak"
+        }
+    }]
+}

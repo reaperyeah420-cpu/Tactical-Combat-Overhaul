@@ -1,0 +1,31 @@
+{
+    "plugins": {
+        "tco_rtsCombatPlugin": "tco.rts.RtsCombatPlugin",
+        "tco_irCombatPlugin": "tco.missile.IrCombatPlugin",
+        "tco_radarCombatPlugin": "tco.radar.RadarCombatPlugin",
+        "tco_ammoCombatPlugin": "tco.ammo.AmmoCombatPlugin",
+        "tco_battlefieldCombatPlugin": "tco.battle.BattlefieldCombatPlugin",
+        "tco_fobCombatPlugin": "tco.fob.FobCombatPlugin",
+        "tco_boardingCombatPlugin": "tco.boarding.BoardingCombatPlugin",
+        "tco_repairCombatPlugin": "tco.repair.RepairCombatPlugin",
+        "tco_hangarCombatPlugin": "tco.hangar.HangarCombatPlugin",
+        "tco_powerCombatPlugin": "tco.power.PowerCombatPlugin",
+        "tco_logisticsCombatPlugin": "tco.ai.LogisticsCombatPlugin",
+        "tco_dockCombatPlugin": "tco.dock.RepairDockCombatPlugin",
+        "tco_towCombatPlugin": "tco.tug.TowCombatPlugin",
+        "tco_podCombatPlugin": "tco.rescue.EscapePodPlugin",
+        "tco_deathThroesPlugin": "tco.battle.DeathThroes",
+        "tco_supportDeployment": "tco.ai.SupportDeployment",
+        "tco_abandonedOutposts": "tco.battle.AbandonedOutposts"
+    },
+    "graphics": {
+        "tco_ui": {
+            "btn_rts": "graphics/tco/ui/btn_rts.png",
+            "btn_direct": "graphics/tco/ui/btn_direct.png",
+            "btn_vanilla": "graphics/tco/ui/btn_vanilla.png"
+        },
+        "tco_fob": {
+            "blank": "graphics/tco/fob/blank.png"
+        }
+    }
+}

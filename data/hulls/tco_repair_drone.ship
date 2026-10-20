@@ -1,0 +1,68 @@
+{
+    "bounds": [
+        13,
+        0,
+        6,
+        14,
+        -11,
+        14,
+        -11,
+        -14,
+        6,
+        -14
+    ],
+    "center": [
+        15,
+        13
+    ],
+    "collisionRadius": 17,
+    "engineSlots": [
+        {
+            "angle": 180,
+            "contrailSize": 64,
+            "length": 10,
+            "location": [
+                -11,
+                0
+            ],
+            "style": "LOW_TECH",
+            "width": 3
+        },
+        {
+            "angle": 180,
+            "contrailSize": 64,
+            "length": 10,
+            "location": [
+                -10,
+                7
+            ],
+            "style": "LOW_TECH",
+            "width": 3
+        },
+        {
+            "angle": 180,
+            "contrailSize": 64,
+            "length": 10,
+            "location": [
+                -10,
+                -7
+            ],
+            "style": "LOW_TECH",
+            "width": 3
+        }
+    ],
+    "height": 26,
+    "hullId": "tco_repair_drone",
+    "hullName": "Repair Drone",
+    "hullSize": "FRIGATE",
+    "shieldCenter": [
+        0,
+        0
+    ],
+    "shieldRadius": 12,
+    "spriteName": "graphics/ships/repair_drone.png",
+    "style": "LOW_TECH",
+    "viewOffset": 0,
+    "weaponSlots": [],
+    "width": 30
+}
