@@ -22,6 +22,9 @@ import com.fs.starfarer.api.combat.WeaponAPI.WeaponType;
 
 import tco.Msg;
 import tco.TcoSettings;
+import tco.hullmods.BlowoutPanels;
+import tco.hullmods.ExpandedPropellant;
+import tco.hullmods.WetMagazines;
 import tco.power.PowerCombatPlugin;
 import tco.repair.RepairCombatPlugin;
 
@@ -237,7 +240,8 @@ public final class ArmorEffects {
             if (type == WeaponType.ENERGY) {
                 if (TcoSettings.energyDamageChance <= 0f) continue;
             } else {
-                if (!TcoSettings.cookoffEnabled || !candidate.usesAmmo()) continue;
+                // Station modules' magazines never go up
+                if (!TcoSettings.cookoffEnabled || !candidate.usesAmmo() || ship.isStationModule()) continue;
                 if (type != WeaponType.BALLISTIC && type != WeaponType.MISSILE) continue;
                 if (candidate.getMaxAmmo() <= 0 || candidate.getAmmo() <= 0) continue;
             }
@@ -267,9 +271,11 @@ public final class ArmorEffects {
         Vector2f at = weapon.getLocation();
         float fill = Math.min(1f, (float) weapon.getAmmo() / weapon.getMaxAmmo());
         float volatility = type == WeaponType.MISSILE ? 1.5f : 1f;
-        if (Math.random() >= TcoSettings.cookoffChance * fill * volatility * breach.caliber) return;
+        // Wet Magazine Stowage: flooded magazines rarely go up
+        if (Math.random() >= TcoSettings.cookoffChance * fill * volatility * breach.caliber * WetMagazines.chanceMult(ship)) return;
 
-        float damage = blast * fill * volatility;
+        // Expanded Propellant: bigger charges, a bigger blast; Blowout Panels vent most of it outward
+        float damage = blast * fill * volatility * ExpandedPropellant.cookoffMult(ship) * BlowoutPanels.damageMult(ship);
         weapon.setAmmo(0);
         weapon.disable(true);
         RepairCombatPlugin.markDestroyed(engine, weapon);
@@ -288,7 +294,7 @@ public final class ArmorEffects {
         play("explosion_from_damage", at, ship);
         label(engine, at, "MAGAZINE DETONATION", new Color(255, 80, 60), ship);
         // Fire not scaled by the shell again
-        Fires.tryIgnite(engine, ship, at, true, 1f);
+        Fires.tryIgnite(engine, ship, at, true, BlowoutPanels.fireMult(ship) * WetMagazines.fireMult(ship));
         Msg.about(engine, ship, "Magazine detonation aboard " + ship.getName()
                 + ": " + weapon.getDisplayName() + " destroyed.");
     }

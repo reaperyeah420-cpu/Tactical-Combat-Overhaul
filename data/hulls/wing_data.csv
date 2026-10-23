@@ -1,0 +1,2 @@
+id,variant,tags,tier,rarity,fleet pts,op cost,formation,range,attackRunRange,attackPositionOffset,num,role,role desc,refit,base value,,,,,,,,,,,,,number
+tco_boarding_fragment_wing,tco_boarding_fragment_Hull,"no_drop, no_sell, restricted",0,,0,0,BOX,100000,700,,1,FIGHTER,Fragments,20,0,,,,,,,,,,,,,99995

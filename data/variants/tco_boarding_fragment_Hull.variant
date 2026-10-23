@@ -1,0 +1,12 @@
+{
+    "displayName": "Boarding",
+    "fluxCapacitors": 0,
+    "fluxVents": 0,
+    "goalVariant": false,
+    "hullId": "tco_boarding_fragment",
+    "hullMods": [],
+    "permaMods": [],
+    "sMods": [],
+    "variantId": "tco_boarding_fragment_Hull",
+    "weaponGroups": []
+}

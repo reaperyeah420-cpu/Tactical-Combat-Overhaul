@@ -18,6 +18,7 @@ import com.fs.starfarer.api.combat.ShipAPI;
 import com.fs.starfarer.api.combat.ShipCommand;
 import com.fs.starfarer.api.combat.ShipSystemAPI;
 import com.fs.starfarer.api.combat.ShipwideAIFlags;
+import com.fs.starfarer.api.combat.WeaponAPI;
 import com.fs.starfarer.api.combat.WeaponGroupAPI;
 
 import tco.TcoSettings;
@@ -206,6 +207,54 @@ public class PassiveShipAI implements ShipAIPlugin {
             threatTimer = SHIELD_HOLD_TIME;
             threatLoc.set(bestLoc);
         }
+        aimAtThreat(engine);
+    }
+
+    // Facing that brings the most guns to bear on the nearest enemy ship in reach; null when none
+    private Float threatHeading;
+
+    private void aimAtThreat(CombatEngineAPI engine) {
+        threatHeading = null;
+        float reach = 0f;
+        for (WeaponAPI w : ship.getAllWeapons()) {
+            if (!w.isDecorative() && w.getType() != WeaponAPI.WeaponType.MISSILE) reach = Math.max(reach, w.getRange());
+        }
+        if (reach <= 0f) return;
+        ShipAPI enemy = null;
+        float nearest = Float.MAX_VALUE;
+        for (ShipAPI other : engine.getShips()) {
+            if (other.getOwner() == ship.getOwner() || (other.getOwner() != 0 && other.getOwner() != 1)) continue;
+            if (!other.isAlive() || other.isHulk() || other.isFighter() || other.isDrone() || other.isShuttlePod()) continue;
+            if (AmmoRules.isShuttle(other) || other.isPhased() || FogOfWar.isHidden(other)) continue;
+            float gap = RtsMath.distance(ship.getLocation(), other.getLocation())
+                    - ship.getCollisionRadius() - other.getCollisionRadius();
+            if (gap <= reach && gap < nearest) {
+                nearest = gap;
+                enemy = other;
+            }
+        }
+        if (enemy == null) return;
+        float toEnemy = RtsMath.angle(ship.getLocation(), enemy.getLocation());
+        float bestScore = -Float.MAX_VALUE;
+        float bestFacing = ship.getFacing();
+        // Try 12 headings; score = gun DPS whose arc covers the enemy, minus a little for turning further
+        for (int i = 0; i < 12; i++) {
+            float bearing = i * 30f;
+            float facing = toEnemy - bearing;
+            float dps = 0f;
+            for (WeaponAPI w : ship.getAllWeapons()) {
+                if (w.isDecorative() || w.hasAIHint(WeaponAPI.AIHints.PD_ONLY) || w.getDerivedStats() == null) continue;
+                if (Math.abs(RtsMath.shortestRotation(w.getArcFacing(), bearing)) <= w.getArc() / 2f) {
+                    dps += w.getDerivedStats().getDps();
+                }
+            }
+            float score = dps - Math.abs(RtsMath.shortestRotation(ship.getFacing(), facing)) * 0.01f;
+            if (score > bestScore) {
+                bestScore = score;
+                bestFacing = facing;
+            }
+        }
+        threatHeading = bestFacing;
     }
 
     private void updateShield(float amount) {
@@ -428,11 +477,23 @@ public class PassiveShipAI implements ShipAIPlugin {
                 break;
             }
             default:
+                // A Defensive ship flying home after a fight, still on HOLD so it can fight on the way
+                if (state.order == UnitState.OrderType.HOLD && state.returnTo != null) {
+                    if (RtsMath.distance(loc, state.returnTo) <= 150f) {
+                        state.returnTo = null;
+                    } else {
+                        dest = state.returnTo;
+                        arriveRadius = 150f;
+                    }
+                }
                 break;
         }
 
         if (dest == null) {
             if (speed > 2f) ship.giveCommand(ShipCommand.DECELERATE, null, 0);
+            // Idle: bring the guns to bear on whoever is in reach
+            boolean idle = state.order == UnitState.OrderType.HOLD || state.order == UnitState.OrderType.ESCORT;
+            if (idle && TcoSettings.idleFaceThreats && threatHeading != null) turnToward(threatHeading);
             return;
         }
 

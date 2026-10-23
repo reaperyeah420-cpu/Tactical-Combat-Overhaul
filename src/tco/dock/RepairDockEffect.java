@@ -19,9 +19,8 @@ public class RepairDockEffect extends BaseBattleObjectiveEffect {
 
     @Override
     public String getLongDescription() {
-        return "Capturing this sets up a Repair Dock behind your lines: an unarmed, heavily armoured station"
-                + " with a large fleet of repair drones. Like a fleet tender, it sends them to friendly ships"
-                + " within its reach to restart reactors and fix destroyed weapons, engines and armor."
-                + " A destroyed dock is replaced after a while if you still hold the beacon.";
+        return "Capture it to set up a Repair Dock: an unarmed, heavily armored station whose repair drones fix"
+                + " reactors, weapons, engines and armor on nearby friendly ships. If the dock is destroyed, a new one"
+                + " goes up after a while as long as you hold the beacon.";
     }
 }

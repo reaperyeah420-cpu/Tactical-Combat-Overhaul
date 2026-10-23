@@ -1,66 +1,98 @@
 fieldID,fieldName,fieldType,defaultValue,secondaryValue,fieldDescription,minValue,maxValue,tab
-tco_header_RTS,RTS,Header,RTS,,,,,RTS
-tco_note,Note,Text,"Changes apply to new battles. Keys are changed in battle, on the RTS controls sheet (the ? button). Values set here win over tco_settings.json.",,,,,RTS
-rtsDefault,Start battles in RTS mode,Boolean,true,,Start every battle in RTS mode. false = start in normal Starsector controls.,,,RTS
-commandPod,Command from a hidden shuttle,Boolean,true,,In RTS mode the game is told the player sits in an invisible command shuttle instead of the flagship.,,,RTS
-defaultStance,Default Stance,Radio,DEFENSIVE,"AGGRESSIVE, DEFENSIVE, HOLD, EVASIVE, RESCUE","stance of ships that have none saved: AGGRESSIVE, DEFENSIVE, HOLD, EVASIVE or RESCUE",,,RTS
-aggressiveSightRange,Aggressive Sight Range,Double,4000.0,,an idle aggressive ship goes after enemies this close,0,40000,RTS
-evasiveMargin,Evasive Margin,Double,500.0,,Evasive ships keep this much further away than the enemy's guns reach,0,5000,RTS
-defensiveLeash,Defensive Leash,Double,1500.0,,a defensive ship breaks off a fight this far from where it was left,0,15000,RTS
-formationLeash,Formation Leash,Double,800.0,,a ship in formation breaks off a fight this far from its slot,0,8000,RTS
-attackMoveLeash,Attack Move Leash,Double,1500.0,,a ship on attack-move breaks off a fight this far from where it started,0,15000,RTS
-cameraPanSpeed,Camera Pan Speed,Double,1400.0,,world units per second at zoom 1; scales with zoom,0,14000,RTS
-cameraFastMult,Camera Fast x,Double,2.5,,multiplier while holding shift,0,25.0,RTS
-zoomMin,Zoom Min,Double,0.6,,,0,6.0,RTS
-zoomMax,Zoom Max,Double,8.0,,,0,80.0,RTS
-tco_header_Battlefield,Battlefield,Header,Battlefield,,,,,Battlefield
-mapSizeMult,Map Size x,Double,2.0,,Map size multiplier per side: 2.0 = twice as wide and twice as tall = 4 times the area. Campaign battles only.,0,20.0,Battlefield
-escapeMapSizeMult,Escape Map Size x,Double,1.5,,"Same, for escape battles, also per side.",0,15.0,Battlefield
-deployStandoffFraction,Deploy Standoff Fraction,Double,0.7,,"How far apart the two fleets start, as a fraction of the map height (not for escape battles).",0,1,Battlefield
-weaponRangeMult,Weapon Range x,Double,1.5,,Range multiplier for every weapon except point defence. 1.0 switches it off.,0,15.0,Battlefield
-beaconChance,Beacon Chance,Double,0.75,,"Chance that each objective beacon (FOB Control Array, Repair Dock Beacon) is placed in a battle, rolled for each one separately.",0,1,Battlefield
-beaconChanceAbyss,Beacon Chance Abyss,Double,0.25,,"The same, for battles in Random Assortment of Things' Abyss.",0,1,Battlefield
-tco_header_Ammoandresupply,Ammo and resupply,Header,Ammo and resupply,,,,,Ammo and resupply
-ammoEnabled,Ammo Enabled,Boolean,true,,"false switches the whole ammo system off (guns unlimited again, resupply ships do nothing).",,,Ammo and resupply
-ballisticFluxMult,Ballistic Flux x,Double,0.4,,"ballistic weapons make this share of their usual flux, since they now need ammo",0,4.0,Ammo and resupply
-ammoSeconds,Ammo Seconds,Double,120.0,,Ballistic guns get enough rounds for this many seconds of continuous fire.,0,1200,Ammo and resupply
-pdAmmoMult,PD Ammo x,Double,2.0,,point-defence guns get this much more (instead of the size bonus below),0,20.0,Ammo and resupply
-ammoSmallMult,Ammo Small x,Double,1.75,,other small guns get this much more,0,17.5,Ammo and resupply
-ammoMediumMult,Ammo Medium x,Double,1.5,,medium guns,0,15.0,Ammo and resupply
-ammoLargeMult,Ammo Large x,Double,1.25,,large guns,0,12.5,Ammo and resupply
-minAmmo,Min Ammo,Int,10,,,0,100,Ammo and resupply
-gunReloadSeconds,Gun Reload Seconds,Double,20.0,,Seconds a docked shuttle takes to refill a weapon from empty.,0,200,Ammo and resupply
-missileReloadSeconds,Missile Reload Seconds,Double,45.0,,,0,450,Ammo and resupply
-supplyMult,Supply x,Double,1.0,,scales how much stock resupply ships carry (150/300/600/1200),0,10.0,Ammo and resupply
-resupplyRangeMult,Resupply Range x,Double,1.0,,scales resupply range (600/800/1000/1200),0,10.0,Ammo and resupply
-supplyShuttles,Supply Shuttles,Boolean,true,,"Resupply is delivered by shuttle: one per ship being supplied. false = ships in the radius are refilled directly, with no shuttles.",,,Ammo and resupply
-shuttleCapacity,Shuttle Capacity,Double,80.0,,most stock one shuttle carries per trip,0,800,Ammo and resupply
-shuttleSpeedMult,Shuttle Speed x,Double,0.333,,shuttle speed as a fraction of the stock shuttle hull's (400),0,3.33,Ammo and resupply
+tco_header_RTS,RTS,Header,RTS,,,,,Battle and RTS
+tco_note,Note,Text,"Changes apply to new battles. Keys are changed in battle, on the RTS controls sheet (the ? button). Values set here win over tco_settings.json.",,,,,Battle and RTS
+rtsDefault,Start battles in RTS mode,Boolean,true,,Start every battle in RTS mode. false = start in normal Starsector controls.,,,Battle and RTS
+rtsNeedsCommandShip,RTS mode only with a CIC or Auxiliary CIC,Boolean,false,,RTS mode only while you have a CIC or Auxiliary CIC in the battle,,,Battle and RTS
+commandPod,Command from a hidden shuttle,Boolean,true,,In RTS mode you command from an invisible shuttle instead of your flagship. Turn off if it causes problems.,,,Battle and RTS
+rtsHideAiTarget,Reticle only on targets you pick (RTS),Boolean,true,,"In RTS mode, only show the target reticle on ships you picked yourself (R or a radar lock).",,,Battle and RTS
+defaultStance,Default Stance,Radio,DEFENSIVE,"AGGRESSIVE, DEFENSIVE, HOLD, EVASIVE, RESCUE","stance of ships that have none saved: AGGRESSIVE, DEFENSIVE, HOLD, EVASIVE or RESCUE",,,Battle and RTS
+aggressiveSightRange,Aggressive Sight Range,Double,4000.0,,an idle aggressive ship goes after enemies this close,0,40000,Battle and RTS
+evasiveMargin,Evasive Margin,Double,500.0,,Evasive ships keep this much further away than the enemy's guns reach,0,5000,Battle and RTS
+defensiveLeash,Defensive Leash,Double,1500.0,,a defensive ship breaks off a fight this far from where it was left,0,15000,Battle and RTS
+stancesSteerShipAi,Stances Steer Ship AI,Boolean,true,,Ships handed to the game's AI without an officer take a personality from their stance.,,,Battle and RTS
+formationLeash,Formation Leash,Double,800.0,,a ship in formation breaks off a fight this far from its slot,0,8000,Battle and RTS
+attackMoveLeash,Attack Move Leash,Double,1500.0,,a ship on attack-move breaks off a fight this far from where it started,0,15000,Battle and RTS
+engageGiveUpSeconds,Give up on unreachable targets after (s),Double,12.0,,a ship fighting on its own gives up on a target it can't get in reach of for this long,0,120,Battle and RTS
+engageSwitchMargin,Target switch margin,Double,1.5,,how much better (in target score) another enemy must be before a fighting ship switches to it,0,15.0,Battle and RTS
+idleFaceThreats,Idle ships face threats,Boolean,true,,idle ships (and Hold ground) turn to bring their guns to bear on the nearest enemy in reach,,,Battle and RTS
+cameraPanSpeed,Camera Pan Speed,Double,1400.0,,world units per second at zoom 1; scales with zoom,0,14000,Battle and RTS
+cameraFastMult,Camera Fast x,Double,2.5,,multiplier while holding shift,0,25.0,Battle and RTS
+zoomMin,Zoom Min,Double,0.6,,,0,6.0,Battle and RTS
+zoomMax,Zoom Max,Double,8.0,,,0,80.0,Battle and RTS
+tco_header_Battlefield,Battlefield,Header,Battlefield,,,,,Battle and RTS
+mapSizeMult,Map Size x,Double,2.0,,"How much bigger battle maps are, per side. 2 means twice as wide and twice as tall.",0,20.0,Battle and RTS
+escapeMapSizeMult,Escape Map Size x,Double,1.5,,"Same, for escape battles, also per side.",0,15.0,Battle and RTS
+deployStandoffFraction,Deploy Standoff Fraction,Double,0.85,,"How far apart the two fleets start, as a fraction of the map height (not for escape battles).",0,1,Battle and RTS
+retreatEdgeDistance,Retreat Edge Distance,Double,500.0,,How close to their map edge ships must get to retreat. Vanilla is 2000.,0,5000,Battle and RTS
+deployEdgeClearance,Deploy Edge Clearance,Double,1000.0,,Fleets always start at least this far outside the retreat zone.,0,10000,Battle and RTS
+weaponRangeMult,Weapon Range x,Double,1.5,,Range multiplier for every weapon except point defence. 1.0 switches it off.,0,15.0,Battle and RTS
+beaconChance,Beacon Chance,Double,0.75,,"Chance for each objective beacon (Supply FOB, Repair Dock) to appear in a battle.",0,1,Battle and RTS
+beaconChanceAbyss,Beacon Chance Abyss,Double,0.25,,"The same, for battles in Random Assortment of Things' Abyss.",0,1,Battle and RTS
+aiLowPriorityBases,AI Low Priority Bases,Boolean,true,,The AI won't stop to shoot Repair Docks and Supply FOBs while enemy warships are nearby.,,,Battle and RTS
+tco_header_Ammoandresupply,Ammo and resupply,Header,Ammo and resupply,,,,,Ammo and FOB
+ammoEnabled,Ammo Enabled,Boolean,true,,"false switches the whole ammo system off (guns unlimited again, resupply ships do nothing).",,,Ammo and FOB
+ballisticFluxMult,Ballistic Flux x,Double,0.4,,"ballistic weapons make this share of their usual flux, since they now need ammo",0,4.0,Ammo and FOB
+energyAmmoFluxMult,Energy Ammo Flux x,Double,0.6,,those weapons make this share of their usual flux,0,6.0,Ammo and FOB
+ammoSeconds,Ammo Seconds,Double,120.0,,Ballistic guns get enough rounds for this many seconds of continuous fire.,0,1200,Ammo and FOB
+pdAmmoMult,PD Ammo x,Double,2.0,,point-defence guns get this much more (instead of the size bonus below),0,20.0,Ammo and FOB
+ammoAiRation,AI rations low ammo,Boolean,true,,"AI-flown ships low on a limited gun's ammo save it for good shots (close, or a crippled target)",,,Ammo and FOB
+ammoAiConserve,AI starts rationing below (share),Double,0.35,,...below this share of the gun's ammo (magazine and reserve),0,3.5,Ammo and FOB
+ammoAiCritical,AI critical ammo below (share),Double,0.15,,"below this, only half range or a crippled target, and no fighters",0,1.5,Ammo and FOB
+ammoSmallMult,Ammo Small x,Double,1.75,,other small guns get this much more,0,17.5,Ammo and FOB
+ammoMediumMult,Ammo Medium x,Double,1.5,,medium guns,0,15.0,Ammo and FOB
+ammoLargeMult,Ammo Large x,Double,1.25,,large guns,0,12.5,Ammo and FOB
+minAmmo,Min Ammo,Int,10,,,0,100,Ammo and FOB
+gunReloadSeconds,Gun Reload Seconds,Double,20.0,,Seconds a docked shuttle takes to refill a weapon from empty.,0,200,Ammo and FOB
+missileReloadSeconds,Missile Reload Seconds,Double,45.0,,,0,450,Ammo and FOB
+supplyMult,Supply x,Double,1.0,,scales how much stock resupply ships carry (150/300/600/1200),0,10.0,Ammo and FOB
+resupplyRangeMult,Resupply Range x,Double,1.0,,scales resupply range (600/800/1000/1200),0,10.0,Ammo and FOB
+supplyShuttles,Supply Shuttles,Boolean,true,,Ammo is delivered by shuttle. Off: ships in range are refilled directly.,,,Ammo and FOB
+shuttleCapacity,Shuttle Capacity,Double,80.0,,most stock one shuttle carries per trip,0,800,Ammo and FOB
+shuttleSpeedMult,Shuttle Speed x,Double,0.333,,shuttle speed as a fraction of the stock shuttle hull's (400),0,3.33,Ammo and FOB
+tco_header_SupplyFOB,Supply FOB,Header,Supply FOB,,,,,Ammo and FOB
+fobEnabled,FOB Enabled,Boolean,true,,,,,Ammo and FOB
+outpostsDontHoldBattles,Outposts don't hold battles,Boolean,true,,"A side with only its FOB or Repair Dock left scuttles it, so the battle can end.",,,Ammo and FOB
+outpostAbandonSeconds,Outpost Abandon Seconds,Double,5.0,,...after this many seconds,0,50,Ammo and FOB
+fobCapitalStocks,FOB Capital Stocks,Double,5.0,,"stock, in multiples of a capital resupply ship's stock",0,50,Ammo and FOB
+fobRestockPerSecond,FOB Restock Per Second,Double,25.0,,How fast a FOB restocks a supply ship that docks with it.,0,250,Ammo and FOB
+fobArrayRestockPerSecond,FOB Array Restock Per Second,Double,10.0,,Stock the FOB regains per second while its side holds the control array.,0,100,Ammo and FOB
+fobRespawnSeconds,FOB Respawn Seconds,Double,180.0,,How long after a FOB is destroyed before its side can get a new one.,0,1800,Ammo and FOB
 tco_header_Power,Power,Header,Power,,,,,Power
-powerEnabled,Reactor power system,Boolean,true,,"Off: no reactor power (energy weapons and shields run on flux as in vanilla, no power bars); meltdowns follow their own switch",,,Power
+powerEnabled,Reactor power system,Boolean,true,,"Reactor power for energy weapons and shields. Off: they run on flux, as in vanilla.",,,Power
 powerCapacityMult,Power Capacity x,Double,3.0,,power capacity = flux capacity x this (a big reserve),0,30.0,Power
 powerRegenMult,Power Regen x,Double,0.6,,power regenerated per second = flux dissipation x this (unhurried),0,6.0,Power
-powerShieldMult,Power Shield x,Double,0.75,,power drawn per point of flux a shield hit causes,0,7.5,Power
+powerShieldMult,Power Shield x,Double,0.5,,power drawn per point of flux a shield hit causes,0,5.0,Power
+stabilizedShieldPowerMult,Stabilized Shield Power x,Double,0.6,,Stabilized Shields: shield hits draw this share of the usual power,0,6.0,Power
 powerEnergyMult,Power Energy x,Double,1.0,,energy weapons: power drawn per point of flux the shot costs,0,10.0,Power
 powerKineticBeamMult,Power Kinetic Beam x,Double,0.1,,,0,1.0,Power
-powerBallisticMult,Power Ballistic x,Double,0.5,,ballistic weapons: power drawn per point of flux the shot makes (after ballisticFluxMult),0,5.0,Power
+powerBallisticMult,Power Ballistic x,Double,0.5,,Power ballistic weapons draw for each point of flux a shot makes.,0,5.0,Power
 powerShotSmall,Power Shot Small,Double,2.0,,"missile launchers (they make no flux): power per shot, by mount size",0,20,Power
 powerShotMedium,Power Shot Medium,Double,4.0,,,0,40,Power
 powerShotLarge,Power Shot Large,Double,8.0,,,0,80,Power
 powerRestartFraction,Power Restart Fraction,Double,0.05,,share of capacity needed before shields and energy weapons work again,0,1,Power
 powerReticle,Power Reticle,Boolean,true,,"a power bar under every ship's friend-or-foe reticle (yours, allies, enemies)",,,Power
 powerReticleGap,Power Reticle Gap,Double,6.0,,"its gap below the reticle and its thickness, in screen pixels",0,60,Power
-powerHud,Power HUD,Boolean,false,,"the older bar next to the flagship panel, bottom left",,,Power
-reactorMeltdownEnabled,Reactor meltdowns,Boolean,true,,Deep hits can knock out the reactor: engines and shields out until a tender fixes it (works with power off too),,,Power
+powerHud,Power HUD,Boolean,true,,"Show a power bar for the ship you fly, next to the hull and flux bars.",,,Power
+powerHudWidth,Power HUD Width,Double,250.0,,Width of the power bar.,0,2500,Power
+shieldWeakStart,Shield Weak Start,Double,0.2,,"Below this much power, shields start to fade and let kinetic shots through.",0,2.0,Power
+shieldPierceMax,Shield Pierce Max,Double,0.75,,,0,7.5,Power
+shieldPierceShare,Shield Pierce Share,Double,0.5,,Share of flux and power a shot still costs the shield when it passes through.,0,5.0,Power
+pierceSystemMult,Pierce System x,Double,0.0,,,0,1.0,Power
+pierceHardenedMult,Pierce Hardened x,Double,0.5,,,0,5.0,Power
+shieldWeakFade,Shield Weak Fade,Double,0.6,,how much of the shield's brightness and opacity is gone at empty,0,6.0,Power
+powerVentRegenBonus,Power Vent Regen Bonus,Double,0.25,,venting raises power regen by this share,0,2.5,Power
+auxGeneratorRegenBonus,Aux Generator Regen Bonus,Double,0.3,,Auxiliary Generator: power regen +30%%,0,3.0,Power
+energyBanksCapacityBonus,Energy Banks Capacity Bonus,Double,0.4,,Secondary Energy Banks: power capacity +40%%,0,1,Power
+reactorMeltdownEnabled,Reactor meltdowns,Boolean,true,,Deep hits can knock out a ship's reactor until a tender restarts it.,,,Power
 reactorMeltdownChance,Reactor Meltdown Chance,Double,0.35,,chance once a shell reaches the reactor,0,1,Power
 reactorOverloadSeconds,Reactor Overload Seconds,Double,6.0,,,0,60,Power
-reactorEmergencyRegenMult,Reactor Emergency Regen x,Double,0.1,,"After a meltdown the ship runs on emergency power: it recharges at this share of the normal rate, up to this share of capacity.",0,1.0,Power
+reactorEmergencyRegenMult,Reactor Emergency Regen x,Double,0.1,,"After a meltdown, emergency power recharges at this share of the normal rate.",0,1.0,Power
 reactorEmergencyCapMult,Reactor Emergency Cap x,Double,0.1,,,0,1,Power
 enginePermanentChance,Engine Permanent Chance,Double,0.35,,"When an engine nozzle is knocked out, chance it stays out until a drone repairs it.",0,1,Power
 enginePermanentCap,Engine Permanent Cap,Double,0.4,,,0,1,Power
 tco_header_Armor,Armor,Header,Armor,,,,,Armor
 armorEnabled,Armor Enabled,Boolean,true,,Only kinetic and high-explosive shells from ballistic weapons.,,,Armor
-armorBoost,Armor Boost,Double,1.0,,"Every ship's armor (not fighters) counts as this many times as strong: as thick against each hit, and worn away this much more slowly.",0,10.0,Armor
+armorBoost,Armor Boost,Double,1.0,,How much tougher every ship's armor is.,0,10.0,Armor
 eraChargesFrigate,ERA Charges Frigate,Int,1,,"Explosive Reactive Armor hullmod: every armor cell holds a few tile charges, by hull size.",0,10,Armor
 eraChargesDestroyer,ERA Charges Destroyer,Int,1,,,0,10,Armor
 eraChargesCruiser,ERA Charges Cruiser,Int,2,,,0,20,Armor
@@ -71,75 +103,105 @@ eraReloadSeconds,ERA Reload Seconds,Double,10.0,,,0,100,Armor
 eraRearmSeconds,ERA Rearm Seconds,Double,5.0,,,0,50,Armor
 repairPartsEra,Repair Parts ERA,Double,2.0,,,0,20,Armor
 eraManeuverPenalty,ERA Maneuver Penalty,Double,0.25,,,0,2.5,Armor
-compositeDamageMult,Composite Damage x,Double,0.7,,Composite Armor Replacement hullmod: kinetic and high-explosive shells and missiles do compositeDamageMult of their damage; armor points x compositeArmorMult; speed and maneuverability + compositeMobilityBonus.,0,7.0,Armor
+compositeDamageMult,Composite Damage x,Double,0.7,,Composite Armor Replacement: share of kinetic and HE damage that still gets through.,0,7.0,Armor
 compositeArmorMult,Composite Armor x,Double,0.9,,,0,9.0,Armor
 compositeMobilityBonus,Composite Mobility Bonus,Double,0.05,,,0,1.0,Armor
-spallPenetrationMult,Spall Penetration x,Double,0.7,,Spall Lining hullmod: shells penetrate spallPenetrationMult as well; maneuverability - spallManeuverPenalty.,0,7.0,Armor
+spallPenetrationMult,Spall Penetration x,Double,0.7,,Spall Lining: how well shells still penetrate.,0,7.0,Armor
 spallManeuverPenalty,Spall Maneuver Penalty,Double,0.05,,,0,1.0,Armor
-armorAngleEnabled,Armor Angle Enabled,Boolean,true,,Armor hit at a slant counts as thicker (thickness / cos of the angle) in the damage it lets through.,,,Armor
-bounceStartAngle,Bounce Start Angle,Double,45.0,,"Deflection: no chance below bounceStartAngle (0 = square on), rising to bounceMaxChance at bounceFullAngle and beyond.",0,450,Armor
+armorAngleEnabled,Armor Angle Enabled,Boolean,true,,Armor hit at an angle counts as thicker.,,,Armor
+bounceStartAngle,Bounce Start Angle,Double,45.0,,Shots can start to bounce off armor from this angle.,0,450,Armor
 bounceFullAngle,Bounce Full Angle,Double,80.0,,,0,800,Armor
 bounceMaxChance,Bounce Max Chance,Double,0.7,,,0,1,Armor
-refitShipCards,Refit Ship Cards,Boolean,true,,"In the refit screen, write TCO's lines on weapon cards for the ship being refitted (its damage, shell-speed and ammo bonuses counted).",,,Armor
+energyHeatEnabled,Energy Heat Enabled,Boolean,true,,"Energy bolts heat up the armor where they hit, and hot armor takes more damage.",,,Armor
+energyHeatMaxBonus,Energy Heat Max Bonus,Double,0.5,,,0,5.0,Armor
+energyHeatArmorScale,Energy Heat Armor Scale,Double,1.0,,,0,10.0,Armor
+energyHeatCoolSeconds,Energy Heat Cool Seconds,Double,4.0,,,0,40,Armor
+thermalHeatMult,Thermal Plating: heat x,Double,0.6,,Thermal Dispersal Plating: how much heat energy hits still build up.,0,6.0,Armor
+thermalCoolMult,Thermal Plating: cooling time x,Double,0.5,,Thermal Dispersal Plating: a heated spot cools in this share of the time,0,5.0,Armor
+thermalArmorMult,Thermal Plating: armor x,Double,0.9,,Thermal Dispersal Plating: armor rating x this,0,9.0,Armor
+refitShipCards,Refit Ship Cards,Boolean,true,,Show TCO's numbers on weapon cards in the refit screen.,,,Armor
 refitShipCardsAlways,Refit Ship Cards Always,Boolean,false,,,,,Armor
 hitTextInterval,Hit Text Interval,Double,0.7,,at most one line of hit text per ship in this many seconds,0,7.0,Armor
-tco_header_Magazinecookoff,Magazine cook-off,Header,Magazine cook-off,,,,,Magazine cook-off
-cookoffEnabled,Cookoff Enabled,Boolean,true,,"A penetrating shell, or any kinetic / high-explosive shell landing where the armor is already below armorMinFraction, can set off the ammunition of a ballistic or missile weapon near where it went in (within 50 / 70 / 100 units for small / medium / large mounts, times cookoffReachMult).",,,Magazine cook-off
-cookoffChance,Cookoff Chance,Double,0.25,,,0,1,Magazine cook-off
-cookoffReachMult,Cookoff Reach x,Double,1.0,,,0,10.0,Magazine cook-off
-energyDamageChance,Energy Damage Chance,Double,0.05,,"Energy weapons have no magazine to go up, but the same kind of hit can wreck one for good (until a tender repairs it), with no blast or fire.",0,1,Magazine cook-off
-cookoffDamageSmall,Cookoff Damage Small,Double,300.0,,,0,3000,Magazine cook-off
-cookoffDamageMedium,Cookoff Damage Medium,Double,700.0,,,0,7000,Magazine cook-off
-cookoffDamageLarge,Cookoff Damage Large,Double,1500.0,,,0,15000,Magazine cook-off
-tco_header_Fires,Fires,Header,Fires,,,,,Fires
-firesEnabled,Fires Enabled,Boolean,true,,"A magazine cook-off may start a fire where it went up; a shell that breaches the hull may start a smaller one, less often.",,,Fires
-fireChanceCookoff,Fire Chance Cookoff,Double,0.6,,,0,1,Fires
-fireChanceBreach,Fire Chance Breach,Double,0.15,,,0,1,Fires
-fireMinSeconds,Fire Min Seconds,Double,3.0,,,0,30,Fires
-fireMaxSeconds,Fire Max Seconds,Double,10.0,,,0,100,Fires
-fireHullPctBig,"Fire hull damage, big fires",Double,0.015,,"share of the ship's max hull per second, fire from a cook-off",0,1.0,Fires
-fireHullPctSmall,"Fire hull damage, small fires",Double,0.005,,"share of the ship's max hull per second, fire from a breach",0,1.0,Fires
-fireMaxPerShip,Fire Max Per Ship,Int,3,,fires burning at once on one ship,0,30,Fires
-fireHullFloor,Fire Hull Floor,Double,500.0,,fires do no more damage once the hull is at or below this,0,5000,Fires
-tco_header_Shipdeaths,Ship deaths,Header,Ship deaths,,,,,Ship deaths
-deathThroesEnabled,Death throes,Boolean,true,,A ship whose hull runs out doesn't explode at once: it goes through its death throes for a random time between the min and max for its size (seconds).,,,Ship deaths
-deathFrigateMin,Death Frigate Min,Double,3.0,,,0,30,Ship deaths
-deathFrigateMax,Death Frigate Max,Double,5.0,,,0,50,Ship deaths
-deathDestroyerMin,Death Destroyer Min,Double,3.0,,,0,30,Ship deaths
-deathDestroyerMax,Death Destroyer Max,Double,5.0,,,0,50,Ship deaths
-deathCruiserMin,Death Cruiser Min,Double,4.0,,,0,40,Ship deaths
-deathCruiserMax,Death Cruiser Max,Double,7.0,,,0,70,Ship deaths
-deathCapitalMin,Death Capital Min,Double,4.0,,,0,40,Ship deaths
-deathCapitalMax,Death Capital Max,Double,7.0,,,0,70,Ship deaths
-tco_header_Escapepods,Escape pods,Header,Escape pods,,,,,Escape pods
-podsEnabled,Pods Enabled,Boolean,true,,"A lost crewed ship ejects pods carrying a random podSurvivorsMin-podSurvivorsMax share of everyone aboard, crew and marines (at most 0.75, so with the game's own wreck recovery no more than the whole crew can come back), spread unevenly over the pods.",,,Escape pods
-podDistressSignal,Pod distress signal,Boolean,true,,your pods are marked anywhere on the map (green ring and ping); others while in sight,,,Escape pods
-podsFrigate,Pods Frigate,Int,4,,,0,40,Escape pods
-podsDestroyer,Pods Destroyer,Int,6,,,0,60,Escape pods
-podsCruiser,Pods Cruiser,Int,8,,,0,80,Escape pods
-podsCapital,Pods Capital,Int,12,,,0,120,Escape pods
-podSurvivorsMin,Pod Survivors Min,Double,0.25,,,0,2.5,Escape pods
-podSurvivorsMax,Pod Survivors Max,Double,0.75,,,0,7.5,Escape pods
-podDriftSpeed,Pod Drift Speed,Double,30.0,,,0,300,Escape pods
-podPickupRadius,Pod Pickup Radius,Double,40.0,,,0,400,Escape pods
-podRescueRange,Pod Rescue Range,Double,2500.0,,,0,25000,Escape pods
-podShuttlesPerShip,Pod Shuttles Per Ship,Int,2,,,0,20,Escape pods
-podLeftoverChance,Pod Leftover Chance,Double,0.5,,,0,1,Escape pods
+tco_header_Magazinecookoff,Magazine cook-off,Header,Magazine cook-off,,,,,Damage and deaths
+cookoffEnabled,Cookoff Enabled,Boolean,true,,Shells that get through the armor can set off a weapon's ammunition.,,,Damage and deaths
+cookoffChance,Cookoff Chance,Double,0.25,,,0,1,Damage and deaths
+cookoffReachMult,Cookoff Reach x,Double,1.0,,,0,10.0,Damage and deaths
+energyDamageChance,Energy Damage Chance,Double,0.05,,Chance for a hit that gets through to wreck an energy weapon.,0,1,Damage and deaths
+cookoffDamageSmall,Cookoff Damage Small,Double,300.0,,,0,3000,Damage and deaths
+cookoffDamageMedium,Cookoff Damage Medium,Double,700.0,,,0,7000,Damage and deaths
+cookoffDamageLarge,Cookoff Damage Large,Double,1500.0,,,0,15000,Damage and deaths
+propellantSpeedPercent,Propellant Speed Percent,Double,25.0,,Expanded Propellant: how much faster ballistic shells fly.,0,250,Damage and deaths
+propellantAmmoMult,Propellant Ammo x,Double,0.8,,,0,8.0,Damage and deaths
+propellantCookoffMult,Propellant Cookoff x,Double,1.25,,,0,12.5,Damage and deaths
+blowoutDamageMult,Blowout Damage x,Double,0.4,,,0,4.0,Damage and deaths
+blowoutFireMult,Blowout Fire x,Double,0.4,,,0,4.0,Damage and deaths
+wetCookoffChanceMult,Wet Magazines: cook-off chance x,Double,0.4,,Wet Magazine Stowage: how likely a magazine still is to cook off.,0,1,Damage and deaths
+wetFireMult,Wet Magazines: fire chance x,Double,0.5,,Wet Magazine Stowage: chance a cook-off starts a fire x this,0,5.0,Damage and deaths
+wetAmmoMult,Wet Magazines: ammo x,Double,0.85,,Wet Magazine Stowage: ballistic and missile ammo x this,0,8.5,Damage and deaths
+tco_header_Fires,Fires,Header,Fires,,,,,Damage and deaths
+firesEnabled,Fires Enabled,Boolean,true,,Cook-offs and hull breaches can start fires aboard.,,,Damage and deaths
+fireChanceCookoff,Fire Chance Cookoff,Double,0.6,,,0,1,Damage and deaths
+fireChanceBreach,Fire Chance Breach,Double,0.15,,,0,1,Damage and deaths
+fireMinSeconds,Fire Min Seconds,Double,3.0,,,0,30,Damage and deaths
+fireMaxSeconds,Fire Max Seconds,Double,10.0,,,0,100,Damage and deaths
+repairUnitFireDurationMult,Repair Unit Fire Duration x,Double,0.5,,Automated Repair Unit: how long fires last on ships that have it.,0,5.0,Damage and deaths
+repairUnitFireDamageMult,Repair Unit Fire Damage x,Double,0.6,,,0,6.0,Damage and deaths
+repairUnitPatchSeconds,Repair Unit Patch Seconds,Double,40.0,,,0,400,Damage and deaths
+fireHullPctBig,"Fire hull damage, big fires",Double,0.015,,"share of the ship's max hull per second, fire from a cook-off",0,1.0,Damage and deaths
+fireHullPctSmall,"Fire hull damage, small fires",Double,0.005,,"share of the ship's max hull per second, fire from a breach",0,1.0,Damage and deaths
+fireMaxPerShip,Fire Max Per Ship,Int,3,,fires burning at once on one ship,0,30,Damage and deaths
+fireHullFloor,Fire Hull Floor,Double,500.0,,fires do no more damage once the hull is at or below this,0,5000,Damage and deaths
+tco_header_Shipdeaths,Ship deaths,Header,Ship deaths,,,,,Damage and deaths
+deathThroesEnabled,Death throes,Boolean,true,,Destroyed ships burn for a while before they explode.,,,Damage and deaths
+deathFrigateMin,Death Frigate Min,Double,3.0,,,0,30,Damage and deaths
+deathFrigateMax,Death Frigate Max,Double,5.0,,,0,50,Damage and deaths
+deathDestroyerMin,Death Destroyer Min,Double,3.0,,,0,30,Damage and deaths
+deathDestroyerMax,Death Destroyer Max,Double,5.0,,,0,50,Damage and deaths
+deathCruiserMin,Death Cruiser Min,Double,4.0,,,0,40,Damage and deaths
+deathCruiserMax,Death Cruiser Max,Double,7.0,,,0,70,Damage and deaths
+deathCapitalMin,Death Capital Min,Double,4.0,,,0,40,Damage and deaths
+deathCapitalMax,Death Capital Max,Double,7.0,,,0,70,Damage and deaths
+tco_header_Escapepods,Escape pods,Header,Escape pods,,,,,Damage and deaths
+podsEnabled,Pods Enabled,Boolean,true,,Lost crewed ships launch escape pods with some of the crew and marines.,,,Damage and deaths
+podDistressSignal,Pod distress signal,Boolean,true,,your pods are marked anywhere on the map (green ring and ping); others while in sight,,,Damage and deaths
+podsFrigate,Pods Frigate,Int,4,,,0,40,Damage and deaths
+podsDestroyer,Pods Destroyer,Int,6,,,0,60,Damage and deaths
+podsCruiser,Pods Cruiser,Int,8,,,0,80,Damage and deaths
+podsCapital,Pods Capital,Int,12,,,0,120,Damage and deaths
+podSurvivorsMin,Pod Survivors Min,Double,0.25,,,0,2.5,Damage and deaths
+podSurvivorsMax,Pod Survivors Max,Double,0.75,,,0,7.5,Damage and deaths
+podDriftSpeed,Pod Drift Speed,Double,30.0,,,0,300,Damage and deaths
+podPickupRadius,Pod Pickup Radius,Double,40.0,,,0,400,Damage and deaths
+podRescueRange,Pod Rescue Range,Double,2500.0,,,0,25000,Damage and deaths
+podShuttlesPerShip,Pod Shuttles Per Ship,Int,2,,,0,20,Damage and deaths
+podRescueChanceWin,Pod Rescue Chance Win,Double,0.8,,"per drifting pod, after a win",0,1,Damage and deaths
+podRescueChanceLoss,Pod Rescue Chance Loss,Double,0.2,,"per drifting pod, after a loss",0,1,Damage and deaths
 tco_header_Boarding,Boarding,Header,Boarding,,,,,Boarding
+boardingEnabled,Boarding Enabled,Boolean,true,,"Off: no boarding at all, yours or the AI's (escape pods and rescue shuttles still work)",,,Boarding
+threatBoarding,Threat Boarding,Boolean,true,,Threat ships board with swarms of their fragments.,,,Boarding
+threatFragmentStrength,Threat Fragment Strength,Double,0.5,,,0,5.0,Boarding
+threatFragmentsPerCraft,Threat Fragments Per Craft,Int,8,,,0,80,Boarding
+threatFragmentHull,Threat Fragment Hull,Double,15.0,,hull of a fragment craft per fragment carried (no armour): easy to shoot down,0,150,Boarding
+threatWaveCooldown,Threat Wave Cooldown,Double,15.0,,seconds between a Threat ship's waves,0,150,Boarding
+threatFragmentReserve,Threat Fragment Reserve,Double,0.25,,share of its normal swarm a Threat ship keeps for its fragment weapons,0,2.5,Boarding
 marinesPerShuttle,Marines Per Shuttle,Int,8,,,0,80,Boarding
-securityDroidsFrigate,Security Droids Frigate,Int,25,,"Compact Security Forge: security droids it keeps aboard by hull size (defence only, rebuilt between battles), each fighting at this share of a marine, for this share of the ship's cargo space.",0,250,Boarding
+securityDroidsFrigate,Security Droids Frigate,Int,25,,Compact Security Forge: droids on a frigate.,0,250,Boarding
 securityDroidsDestroyer,Security Droids Destroyer,Int,50,,,0,500,Boarding
 securityDroidsCruiser,Security Droids Cruiser,Int,100,,,0,1000,Boarding
 securityDroidsCapital,Security Droids Capital,Int,150,,,0,1500,Boarding
 securityDroidStrength,Security Droid Strength,Double,0.75,,,0,7.5,Boarding
 securityForgeCargoCost,Security Forge: cargo used,Double,0.3,,,0,3.0,Boarding
+securityRebuildDaysFrigate,Security Rebuild Days Frigate,Double,1.0,,Days for the forge to rebuild a full complement of lost droids (partial losses refill sooner),0,10.0,Boarding
+securityRebuildDaysDestroyer,Security Rebuild Days Destroyer,Double,1.5,,,0,15.0,Boarding
+securityRebuildDaysCruiser,Security Rebuild Days Cruiser,Double,2.0,,,0,20.0,Boarding
+securityRebuildDaysCapital,Security Rebuild Days Capital,Double,3.0,,,0,30.0,Boarding
 hcShuttleMarineMult,High-Capacity Shuttles: marines x,Double,1.5,,High-Capacity Shuttles: marines per shuttle x this...,0,15.0,Boarding
 hcShuttleArmorMult,High-Capacity Shuttles: armor x,Double,0.5,,...and the shuttles' armor x this,0,5.0,Boarding
 hcShuttleCapacityMult,High-Capacity Shuttles: room aboard x,Double,1.25,,...and the ship holds this much more marines,0,12.5,Boarding
 largeBayShuttleMult,Efficient Bay: shuttles x,Double,1.5,,Efficient Boarding Bay: shuttles per wave x this...,0,15.0,Boarding
 efficientBayCooldownMult,Efficient Bay: wave cooldown x,Double,0.5,,...the wait between waves x this...,0,5.0,Boarding
 efficientBayExtraShuttles,Efficient Bay: extra shuttles,Int,1,,...and this many more shuttles on top,0,10,Boarding
-droidsFrigate,Droids Frigate,Double,20.0,,"Automated ships (Remnant, Omega, derelicts, ships made automated by AI Switch hullmods...) have droids instead of marines and crew: a fixed number by size, to board with (with the Boarding Shuttle Bay or the AI's boarder role) and to defend with.",0,200,Boarding
+droidsFrigate,Droids Frigate,Double,20.0,,Droids an automated frigate carries to board and defend with.,0,200,Boarding
 droidsDestroyer,Droids Destroyer,Double,40.0,,,0,400,Boarding
 droidsCruiser,Droids Cruiser,Double,80.0,,,0,800,Boarding
 droidsCapital,Droids Capital,Double,160.0,,,0,1600,Boarding
@@ -148,11 +210,17 @@ droidSModBonus,Droids: S-mod bonus,Double,0.25,,extra droids when the Boarding S
 boardingLaunchRange,Boarding Launch Range,Double,3000.0,,"a ship ordered to board closes to this range, then launches",0,30000,Boarding
 boardingWaveCooldown,Boarding Wave Cooldown,Double,60.0,,seconds before the same ship can launch another wave,0,600,Boarding
 boardingShuttleSpeedMult,Boarding Shuttle Speed x,Double,0.6,,boarding shuttle speed as a fraction of the stock shuttle hull's (400),0,6.0,Boarding
+boardingShuttleToughness,Boarding Shuttle Toughness,Double,1.0,,"boarding shuttle hull, armour and shield flux x this (base 500 hull, 150 armour, 300 flux)",0,10.0,Boarding
+breachHullDamage,Breach Hull Damage,Double,40.0,,Breaching Charges: hull damage from each shuttle that docks.,0,400,Boarding
+breachHullFloor,Breach Hull Floor,Double,0.1,,,0,1.0,Boarding
+breachAttackBonus,Breach Attack Bonus,Double,0.5,,,0,5.0,Boarding
+breachSeconds,Breach Seconds,Double,12.0,,,0,120,Boarding
 defenderBonus,Defender Bonus,Double,1.2,,defenders hit this much harder on their own ship,0,12.0,Boarding
 crewStrength,Crew Strength,Double,0.02,,one crew member fights like this fraction of a marine,0,1.0,Boarding
+militiaStrength,Militia Strength,Double,0.5,,"...and with Militia Lockers, like this fraction",0,5.0,Boarding
 surrenderCheckSeconds,Surrender Check Seconds,Double,5.0,,how often a ship with no marines left checks whether its crew gives up,0,50,Boarding
-boardingFlankShare,Boarding Flank Share,Double,0.5,,"Numbers and ground: of the attackers beyond the defenders' number, this share still gets at them (other corridors); each section held beyond the entry adds to the attack, up to +this at the bridge; defenders down to a quarter and outnumbered this many to one may lay down their arms (chance a second).",0,5.0,Boarding
-garrisonQualitySpread,Garrison Quality Spread,Double,0.3,,"The unknowns: garrisons range from green to elite (x 1 -/+ this); something happens aboard about this often (bulkheads blown, ambushes, counterattacks, armories, mutinies, fires); and losing defenders rarely rig the magazine or reactor (chance per event, more with an aggressive or reckless captain).",0,3.0,Boarding
+boardingFlankShare,Boarding Flank Share,Double,0.5,,Share of extra attackers who still get into the fight aboard.,0,5.0,Boarding
+garrisonQualitySpread,Garrison Quality Spread,Double,0.3,,"How much garrison quality varies, from green to elite.",0,3.0,Boarding
 boardingLogPanel,Boarding Log Panel,Boolean,true,,what happens aboard shows in a log over the boarded ship (off: combat messages),,,Boarding
 boardingLogLines,Boarding Log Lines,Int,6,,lines in that log,0,60,Boarding
 boardingEventSeconds,Boarding Event Seconds,Double,12.0,,,0,120,Boarding
@@ -165,59 +233,51 @@ assaultLossMult,Assault Loss x,Double,1.5,,,0,15.0,Boarding
 methodicalAttackMult,Methodical Attack x,Double,0.65,,,0,6.5,Boarding
 methodicalLossMult,Methodical Loss x,Double,0.6,,,0,6.0,Boarding
 withdrawDelay,Withdraw Delay,Double,3.0,,seconds before a Withdraw order pulls the boarders out (time to cancel),0,30,Boarding
-boardingXpAttack,Boarding XP Attack,Double,0.5,,"Marine experience (the game's own, 0-100%%): full experience gives this much more attack, and this much fewer losses, in boarding.",0,5.0,Boarding
+boardingXpAttack,Boarding XP Attack,Double,0.5,,Extra attack in boarding at full marine experience.,0,5.0,Boarding
 boardingXpLosses,Boarding XP Losses,Double,0.4,,,0,4.0,Boarding
 aiMarineXpLevel,AI Marine XP Level,Double,0.2,,,0,2.0,Boarding
-boardingXpPerSurvivor,Boarding XP Per Survivor,Double,0.25,,experience each of your boarders who lived adds (1 = one marine's worth; your level is experience / marines),0,2.5,Boarding
-tco_header_Tenders,Tenders,Header,Tenders,,,,,Tenders
-repairEnabled,Repair Enabled,Boolean,true,,,,,Tenders
-repairDronesFrigate,Repair Drones Frigate,Int,6,,"Repair drones a tender carries, by its hull size. They are reused; only drones shot down are lost.",0,60,Tenders
-repairDronesDestroyer,Repair Drones Destroyer,Int,12,,,0,120,Tenders
-repairDronesCruiser,Repair Drones Cruiser,Int,24,,,0,240,Tenders
-repairDronesCapital,Repair Drones Capital,Int,60,,,0,600,Tenders
-repairRangeMult,Repair Range x,Double,1.0,,"tender radius: 600/800/1000/1200 by hull size, times this",0,10.0,Tenders
-repairDroneSpeedMult,Repair Drone Speed x,Double,1.0,,drone speed as a fraction of 180,0,10.0,Tenders
-armorRepairCap,Armor Repair Cap,Double,0.35,,"armor is patched back up to this share of its original value, no higher",0,1,Tenders
-armorRepairRate,Armor Repair Rate,Double,0.06,,"per second, as a share of a cell's full armor, for the 3x3 cells a drone works on",0,1.0,Tenders
-repairPartsFrigate,Repair Parts Frigate,Double,60.0,,"Spare parts a tender carries, by its hull size. Every repair uses some; with none left the tender sends no more drones.",0,600,Tenders
-repairPartsDestroyer,Repair Parts Destroyer,Double,120.0,,,0,1200,Tenders
-repairPartsCruiser,Repair Parts Cruiser,Double,240.0,,,0,2400,Tenders
-repairPartsCapital,Repair Parts Capital,Double,600.0,,,0,6000,Tenders
-repairPartsWeaponSmall,Repair Parts Weapon Small,Double,4.0,,parts per repair job,0,40,Tenders
-repairPartsWeaponMedium,Repair Parts Weapon Medium,Double,8.0,,,0,80,Tenders
-repairPartsWeaponLarge,Repair Parts Weapon Large,Double,15.0,,,0,150,Tenders
-repairPartsEngine,Repair Parts Engine,Double,5.0,,,0,50,Tenders
-repairPartsArmor,Repair Parts Armor,Double,3.0,,per 3x3 armor patch,0,30,Tenders
-repairPartsReactor,Repair Parts Reactor,Double,20.0,,restarting a melted-down reactor,0,200,Tenders
-reactorRepairFrigate,Reactor Repair Frigate,Double,12.0,,"Seconds a drone needs to restart a melted-down reactor, by the size of the ship.",0,120,Tenders
-reactorRepairDestroyer,Reactor Repair Destroyer,Double,16.0,,,0,160,Tenders
-reactorRepairCruiser,Reactor Repair Cruiser,Double,22.0,,,0,220,Tenders
-reactorRepairCapital,Reactor Repair Capital,Double,30.0,,,0,300,Tenders
-tco_header_TugRig,Tug Rig,Header,Tug Rig,,,,,Tug Rig
-tugAutoRange,Tug Auto Range,Double,4000.0,,tugs flown by the AI go after stranded ships this close,0,40000,Tug Rig
-tugMinSpeedMult,Tug Min Speed x,Double,0.25,,"the slowest a tug gets, however heavy its load",0,2.5,Tug Rig
-tco_header_SupplyFOB,Supply FOB,Header,Supply FOB,,,,,Supply FOB
-fobEnabled,FOB Enabled,Boolean,true,,,,,Supply FOB
-outpostsDontHoldBattles,Outposts don't hold battles,Boolean,true,,"a side with only its Supply FOB / Repair Dock left (no ships, none in reserve) scuttles them, so the battle can end",,,Supply FOB
-outpostAbandonSeconds,Outpost Abandon Seconds,Double,5.0,,...after this many seconds,0,50,Supply FOB
-fobCapitalStocks,FOB Capital Stocks,Double,5.0,,"stock, in multiples of a capital resupply ship's stock",0,50,Supply FOB
-fobRestockPerSecond,FOB Restock Per Second,Double,25.0,,How fast a FOB shuttle that has docked with a resupply ship unloads into that ship's stock (1:1 from the FOB's own stock).,0,250,Supply FOB
-fobArrayRestockPerSecond,FOB Array Restock Per Second,Double,10.0,,Stock the FOB regains per second while its side holds the control array.,0,100,Supply FOB
-fobRespawnSeconds,FOB Respawn Seconds,Double,180.0,,Seconds after a FOB is destroyed before its side can get a new one (it must hold the array then).,0,1800,Supply FOB
-tco_header_RepairDock,Repair Dock,Header,Repair Dock,,,,,Repair Dock
-dockEnabled,Dock Enabled,Boolean,true,,"Capturing the beacon puts a Repair Dock (an unarmed, heavily armoured station) behind your lines.",,,Repair Dock
-dockRange,Dock Range,Double,1200.0,,"drone reach, from the edge of the dock",0,12000,Repair Dock
-dockDrones,Dock Drones,Int,120,,repair drones (a capital tender has 60),0,1200,Repair Dock
-dockHoldRate,Dock Hold Rate,Double,0.8,,how fast it brings stranded friendly ships in its reach to a stop (share of speed per second),0,8.0,Repair Dock
-dockParts,Dock Parts,Double,4800.0,,spare parts (a capital tender has 600),0,48000,Repair Dock
-dockRestockPartsPerSecond,Dock Restock Parts Per Second,Double,20.0,,"spare parts per second, up to the tender's normal load",0,200,Repair Dock
-dockDroneRestockSeconds,Dock Drone Restock Seconds,Double,5.0,,one lost drone replaced every this many seconds,0,50,Repair Dock
-dockBeaconPartsPerSecond,Dock Beacon Parts Per Second,Double,10.0,,"While its side holds the beacon, the dock itself is restocked (up to its starting stock):",0,100,Repair Dock
-dockBeaconDroneSeconds,Dock Beacon Drone Seconds,Double,10.0,,one drone every this many seconds,0,100,Repair Dock
-dockDronesPerShipMult,Dock Drones Per Ship x,Int,2,,"drones it may put on one ship, times a tender's limit (2 per frigate/destroyer, 4 per cruiser/capital)",0,20,Repair Dock
-dockRespawnSeconds,Dock Respawn Seconds,Double,180.0,,,0,1800,Repair Dock
+boardingXpPerSurvivor,Boarding XP Per Survivor,Double,0.25,,Experience each surviving boarder earns.,0,2.5,Boarding
+tco_header_Tenders,Tenders,Header,Tenders,,,,,Repairs and towing
+repairEnabled,Repair Enabled,Boolean,true,,,,,Repairs and towing
+repairDronesFrigate,Repair Drones Frigate,Int,6,,Repair drones a frigate tender carries.,0,60,Repairs and towing
+repairDronesDestroyer,Repair Drones Destroyer,Int,12,,,0,120,Repairs and towing
+repairDronesCruiser,Repair Drones Cruiser,Int,24,,,0,240,Repairs and towing
+repairDronesCapital,Repair Drones Capital,Int,60,,,0,600,Repairs and towing
+repairRangeMult,Repair Range x,Double,1.0,,"tender radius: 600/800/1000/1200 by hull size, times this",0,10.0,Repairs and towing
+repairDroneSpeedMult,Repair Drone Speed x,Double,1.0,,drone speed as a fraction of 180,0,10.0,Repairs and towing
+armorRepairCap,Armor Repair Cap,Double,0.35,,"armor is patched back up to this share of its original value, no higher",0,1,Repairs and towing
+armorRepairRate,Armor Repair Rate,Double,0.06,,"per second, as a share of a cell's full armor, for the 3x3 cells a drone works on",0,1.0,Repairs and towing
+repairPartsFrigate,Repair Parts Frigate,Double,60.0,,Spare parts a frigate tender carries.,0,600,Repairs and towing
+repairPartsDestroyer,Repair Parts Destroyer,Double,120.0,,,0,1200,Repairs and towing
+repairPartsCruiser,Repair Parts Cruiser,Double,240.0,,,0,2400,Repairs and towing
+repairPartsCapital,Repair Parts Capital,Double,600.0,,,0,6000,Repairs and towing
+repairPartsWeaponSmall,Repair Parts Weapon Small,Double,4.0,,parts per repair job,0,40,Repairs and towing
+repairPartsWeaponMedium,Repair Parts Weapon Medium,Double,8.0,,,0,80,Repairs and towing
+repairPartsWeaponLarge,Repair Parts Weapon Large,Double,15.0,,,0,150,Repairs and towing
+repairPartsEngine,Repair Parts Engine,Double,5.0,,,0,50,Repairs and towing
+repairPartsArmor,Repair Parts Armor,Double,3.0,,per 3x3 armor patch,0,30,Repairs and towing
+repairPartsReactor,Repair Parts Reactor,Double,20.0,,restarting a melted-down reactor,0,200,Repairs and towing
+reactorRepairFrigate,Reactor Repair Frigate,Double,12.0,,"Seconds a drone needs to restart a melted-down reactor, by the size of the ship.",0,120,Repairs and towing
+reactorRepairDestroyer,Reactor Repair Destroyer,Double,16.0,,,0,160,Repairs and towing
+reactorRepairCruiser,Reactor Repair Cruiser,Double,22.0,,,0,220,Repairs and towing
+reactorRepairCapital,Reactor Repair Capital,Double,30.0,,,0,300,Repairs and towing
+tco_header_TugRig,Tug Rig,Header,Tug Rig,,,,,Repairs and towing
+tugAutoRange,Tug Auto Range,Double,4000.0,,tugs flown by the AI go after stranded ships this close,0,40000,Repairs and towing
+tugMinSpeedMult,Tug Min Speed x,Double,0.25,,"the slowest a tug gets, however heavy its load",0,2.5,Repairs and towing
+tco_header_RepairDock,Repair Dock,Header,Repair Dock,,,,,Repairs and towing
+dockEnabled,Dock Enabled,Boolean,true,,"Repair Dock Beacon objectives, which set up a Repair Dock when captured.",,,Repairs and towing
+dockRange,Dock Range,Double,1200.0,,"drone reach, from the edge of the dock",0,12000,Repairs and towing
+dockDrones,Dock Drones,Int,120,,repair drones (a capital tender has 60),0,1200,Repairs and towing
+dockHoldRate,Dock Hold Rate,Double,0.8,,how fast it brings stranded friendly ships in its reach to a stop (share of speed per second),0,8.0,Repairs and towing
+dockParts,Dock Parts,Double,4800.0,,spare parts (a capital tender has 600),0,48000,Repairs and towing
+dockRestockPartsPerSecond,Dock Restock Parts Per Second,Double,20.0,,"spare parts per second, up to the tender's normal load",0,200,Repairs and towing
+dockDroneRestockSeconds,Dock Drone Restock Seconds,Double,5.0,,one lost drone replaced every this many seconds,0,50,Repairs and towing
+dockBeaconPartsPerSecond,Dock Beacon Parts Per Second,Double,10.0,,"While its side holds the beacon, the dock itself is restocked (up to its starting stock):",0,100,Repairs and towing
+dockBeaconDroneSeconds,Dock Beacon Drone Seconds,Double,10.0,,one drone every this many seconds,0,100,Repairs and towing
+dockDronesPerShipMult,Dock Drones Per Ship x,Int,2,,How many more drones a Repair Dock can put on one ship than a tender.,0,20,Repairs and towing
+dockRespawnSeconds,Dock Respawn Seconds,Double,180.0,,,0,1800,Repairs and towing
 tco_header_Radar,Radar,Header,Radar,,,,,Radar
-radarEnabled,Radar Enabled,Boolean,true,,"Every ship (not fighters, drones or craft) has a radar reaching radarRangeMult x its sight range against a capital-sized target.",,,Radar
+radarEnabled,Radar Enabled,Boolean,true,,"Ships detect each other by radar, beyond sight range.",,,Radar
 radarRangeMult,Radar Range x,Double,4.0,,,0,40.0,Radar
 rcsFighter,RCS Fighter,Double,0.15,,,0,1.5,Radar
 rcsSmallCraft,RCS Small Craft,Double,0.12,,"drones, shuttles, shuttle pods, escape pods",0,1.2,Radar
@@ -229,16 +289,21 @@ ramRcsMult,RAM RCS x,Double,0.4,,,0,4.0,Radar
 ramArmorHullMult,RAM Armor Hull x,Double,0.9,,,0,9.0,Radar
 aesaRadarPower,AESA Radar Power,Double,1.5,,,0,15.0,Radar
 radarStationPower,Radar Station Power,Double,2.0,,,0,20.0,Radar
-radarLeadGuidance,Radar Lead Guidance,Boolean,true,,"Radar missiles flown by vanilla's guided-missile AI (pure pursuit, which ends up tail-chasing and looping on long flights) get TCO's lead guidance instead: they steer for where the target will be.",,,Radar
-radarHoldDefault,Radar Hold Default,Boolean,true,,"Radar missiles are never launched at small craft (fighters, drones, shuttles), unless the launcher is anti-fighter or point defence.",,,Radar
+radarLeadGuidance,Radar Lead Guidance,Boolean,true,,"Radar missiles aim for where the target will be, instead of chasing its tail.",,,Radar
+radarHoldDefault,Radar Hold Default,Boolean,true,,"Radar missiles aren't fired at fighters, drones or shuttles.",,,Radar
 radarMissileRangeMult,Radar Missile Range x,Double,2.0,,,0,20.0,Radar
 radarFeedsAi,Radar Feeds AI,Boolean,true,,,,,Radar
-radarFireBeyondSight,Radar Fire Beyond Sight,Boolean,true,,your side's autofiring radar launchers fire at radar tracks beyond sight (the game's AI only sees what is in sight),,,Radar
-radarScope,Radar Scope,Boolean,true,,"Radar scope, bottom right, while you pilot a ship: north up, out to the ship's radar range against a capital, with the returns its radar (or datalink) holds.",,,Radar
+radarFireBeyondSight,Radar Fire Beyond Sight,Boolean,true,,Your autofiring radar launchers can fire at radar contacts beyond sight.,,,Radar
+esmRangeMult,ESM: hearing range x,Double,1.5,,Passive Sensor Suite: how far away enemy radars and jammers can be heard.,0,15.0,Radar
+esmErrorFraction,ESM: contact error (share of distance),Double,0.1,,Passive Sensor Suite: contact off by up to this share of the distance,0,1,Radar
+esmMinError,ESM: smallest contact circle,Double,150.0,,Passive Sensor Suite: smallest contact circle (units),0,1500,Radar
+esmRefreshSeconds,ESM: contacts update every (s),Double,2.0,,Passive Sensor Suite: contacts are re-placed this often,0,20,Radar
+armGraceSeconds,ARM: flies on after the target goes quiet (s),Double,5.0,,Anti-radiation missiles: how long they keep flying after the target goes quiet.,0,50,Radar
+radarScope,Radar Scope,Boolean,true,,Show a radar scope in the bottom right while you fly a ship.,,,Radar
 radarScopeSize,Radar Scope Size,Double,230.0,,,0,2300,Radar
 radarScopeRight,Radar Scope Right,Double,20.0,,,0,200,Radar
 radarScopeBottom,Radar Scope Bottom,Double,250.0,,,0,2500,Radar
-ecmEnabled,ECM Enabled,Boolean,true,,"ECM Package: jams ecm<Size> incoming radar missiles at a time (homing on the ship, or on a friend within ecmRange) within ecmRange, costing ecmPowerPerMissile of the reactor's capacity per second each.",,,Radar
+ecmEnabled,ECM Enabled,Boolean,true,,The ECM Package jams incoming radar missiles.,,,Radar
 ecmFrigate,ECM Frigate,Int,1,,,0,10,Radar
 ecmDestroyer,ECM Destroyer,Int,2,,,0,20,Radar
 ecmCruiser,ECM Cruiser,Int,3,,,0,30,Radar
@@ -247,7 +312,7 @@ ecmRange,ECM Range,Double,1500.0,,,0,15000,Radar
 ecmPowerPerMissile,ECM Power Per Missile,Double,0.03,,,0,1.0,Radar
 ecmSpoofChance,ECM Spoof Chance,Double,0.6,,,0,1,Radar
 eccmSpoofMult,ECCM Spoof x,Double,0.7,,,0,7.0,Radar
-jamEnabled,Jam Enabled,Boolean,true,,Noise jamming (ECM Package): a cloud of radar noise jamRadius<Size> around the ship.,,,Radar
+jamEnabled,Jam Enabled,Boolean,true,,The ECM Package can fill the area around the ship with radar noise.,,,Radar
 jamRadiusFrigate,Jam Radius Frigate,Double,1200.0,,,0,12000,Radar
 jamRadiusDestroyer,Jam Radius Destroyer,Double,1500.0,,,0,15000,Radar
 jamRadiusCruiser,Jam Radius Cruiser,Double,1800.0,,,0,18000,Radar
@@ -256,61 +321,158 @@ jamNoise,Jam Noise,Double,6.0,,,0,60,Radar
 jamPowerPerSecond,Jam Power Per Second,Double,0.025,,,0,1.0,Radar
 jamStartPower,Jam Start Power,Double,0.55,,,0,5.5,Radar
 jamStopPower,Jam Stop Power,Double,0.3,,,0,3.0,Radar
-nebulaSignalMult,Nebula Signal x,Double,0.5,,"Nebula clouds weaken radar: the signal x nebulaSignalMult for each of the radar, the midpoint and the target that is inside a cloud.",0,5.0,Radar
+nebulaSignalMult,Nebula Signal x,Double,0.5,,How much nebulas weaken radar.,0,5.0,Radar
 missileAvoidAsteroids,Missile Avoid Asteroids,Boolean,true,,Radar missiles on TCO's lead guidance steer around asteroids.,,,Radar
-tco_header_IRmissilesandflares,IR missiles and flares,Header,IR missiles and flares,,,,,IR missiles and flares
-irMaxRange,IR Max Range,Double,1500.0,,"Every guided missile launcher, from any mod, is sorted into IR or radar guidance.",0,15000,IR missiles and flares
-irLockEnabled,IR Lock Enabled,Boolean,true,,"IR lock: every ship has a heat signature, 0-1: 0.1 for the hull, up to 0.5 more for running engines (all working and thrusting; idle engines count 60%%, damaged ones less, flamed out none; seen from behind x1.3, from the front x0.75), up to 0.5 more for flux (venting = full).",,,IR missiles and flares
-flaresEnabled,Flares Enabled,Boolean,true,,"Every ship carries flares by hull size (more with the Expanded Countermeasures Dispenser: ecdFrigateMult on frigates, ecdOtherMult on the rest) and drops a salvo of flareSalvo<Size> at a time, at most every flareCooldown seconds.",,,IR missiles and flares
-flaresFrigate,Flares Frigate,Int,30,,,0,300,IR missiles and flares
-flaresDestroyer,Flares Destroyer,Int,60,,,0,600,IR missiles and flares
-flaresCruiser,Flares Cruiser,Int,90,,,0,900,IR missiles and flares
-flaresCapital,Flares Capital,Int,120,,,0,1200,IR missiles and flares
-flareSalvoFrigate,Flare Salvo Frigate,Int,2,,,0,20,IR missiles and flares
-flareSalvoDestroyer,Flare Salvo Destroyer,Int,3,,,0,30,IR missiles and flares
-flareSalvoCruiser,Flare Salvo Cruiser,Int,4,,,0,40,IR missiles and flares
-flareSalvoCapital,Flare Salvo Capital,Int,5,,,0,50,IR missiles and flares
-ecdFrigateMult,ECD Frigate x,Double,2.0,,,0,20.0,IR missiles and flares
-ecdOtherMult,ECD Other x,Double,1.5,,,0,15.0,IR missiles and flares
-flareLife,Flare Life,Double,3.5,,,0,35.0,IR missiles and flares
-flareCooldown,Flare Cooldown,Double,0.3,,,0,3.0,IR missiles and flares
-flareAutoCooldown,Flare Auto Cooldown,Double,2.5,,,0,25.0,IR missiles and flares
-flaresAutoPlayer,Flares Auto Player,Boolean,true,,,,,IR missiles and flares
-flareThreatRange,Flare Threat Range,Double,1200.0,,,0,12000,IR missiles and flares
-flareRange,Flare Range,Double,700.0,,,0,7000,IR missiles and flares
-flareChanceCold,Flare Chance Cold,Double,0.95,,,0,1,IR missiles and flares
-flareChanceHot,Flare Chance Hot,Double,0.25,,,0,1,IR missiles and flares
-irccmChanceCold,IRCCM Chance Cold,Double,0.55,,"IRCCM hullmod: IR missiles fired by the ship (or its fighters) never lose a cold target by themselves, and each flare decoys them with irccmChanceCold x (1 - targetHeat)^2, plus irccmBlanketPerFlare for every enemy flare past irccmBlanketStart burning within irccmBlanketRadius of the missile (at most irccmChanceMax).",0,1,IR missiles and flares
-irccmBlanketStart,IRCCM Blanket Start,Int,6,,,0,60,IR missiles and flares
-irccmChanceMax,IRCCM Chance Max,Double,0.6,,,0,1,IR missiles and flares
-flareSystemReloads,Flare System Reloads,Boolean,true,,Ships with a flare-launcher ship system (vanilla or modded: any system whose weapon fires flares) get flareReloads full reloads of their flares instead.,,,IR missiles and flares
-flareReloads,Flare Reloads,Int,2,,,0,20,IR missiles and flares
-tco_header_Fogofwar,Fog of war,Header,Fog of war,,,,,Fog of war
-fogOfWar,Fog of war,Boolean,true,,"In RTS mode the map outside what your side's ships can see is covered by a dark shadow, and enemy ships in it are hidden (you can't select or order attacks on them).",,,Fog of war
-fogHideWhenPiloting,Fog Hide When Piloting,Boolean,true,,Also while piloting a ship or on normal controls (no shading there): enemy ships and their reticles beyond what your side can see are hidden.,,,Fog of war
-sightRangeMult,Sight Range x,Double,0.8,,,0,8.0,Fog of war
-fogDarkness,Fog Darkness,Double,0.6,,,0,6.0,Fog of war
-fogLastSeenSeconds,Fog Last Seen Seconds,Double,20.0,,,0,200,Fog of war
-tco_header_AI,AI,Header,AI,,,,,AI
-powerAiEnabled,Power AI Enabled,Boolean,true,,"Power-aware AI, for every ship the AI flies: enemies, allies, and your RTS units on default AI.",,,AI
-powerAiShieldReserve,Power AI Shield Reserve,Double,0.25,,ships with a shield keep this share of power for it; guns and energy weapons spend only what is above,0,2.5,AI
-powerAiLow,Power AI Low,Double,0.35,,"below this share, only the main weapon groups fire",0,3.5,AI
-powerAiBackOff,Power AI Back Off,Double,0.15,,"below this (or out of power), shielded ships pull back and stop pursuing...",0,1.5,AI
-powerAiRecover,Power AI Recover,Double,0.4,,...until power is back to this share,0,4.0,AI
-logisticsAiEnabled,Logistics AI Enabled,Boolean,true,,"Logistics AI, for ships the game's AI flies (not your ships while RTS mode is on).",,,AI
-logisticsAmmoLow,Logistics Ammo Low,Double,0.3,,a ship below this share of its ammo goes to a supply ship...,0,3.0,AI
-logisticsAmmoDone,Logistics Ammo Done,Double,0.85,,...and returns to the fight once back to this share,0,8.5,AI
-logisticsRepairParts,Logistics Repair Parts,Int,2,,a ship with this many destroyed weapons or engines goes to a tender,0,20,AI
-supportRolesEnabled,Support Roles Enabled,Boolean,true,,"Support roles for AI fleets (enemies and allies; never your own ships), now the backup for fleets short of bays (from before TCO fitted NPC ships).",,,AI
-supportMinFleet,Support Min Fleet,Int,4,,fleets with fewer ships get no roles,0,40,AI
-supportShipsPer,Support Ships Per,Double,8.0,,one supply ship and one tender per this many ships (at least one each),0,80,AI
-supportLogisticsChance,Support Logistics Chance,Double,0.75,,"chance for each logistics hull (civilian, freighter, tanker...) to be picked first",0,1,AI
-aiBoardingEnabled,AI Boarding Enabled,Boolean,true,,"AI boarding: AI fleets (enemies and allies) get boarders, the cheapest warships, one per boarderShipsPer ships.",,,AI
-boarderShipsPer,Boarder Ships Per,Double,8.0,,,0,80,AI
-aiBoardingMargin,AI Boarding Margin,Double,1.3,,,0,13.0,AI
-tco_header_CampaignandNPCfleets,Campaign and NPC fleets,Header,Campaign and NPC fleets,,,,,Campaign and NPC fleets
-npcHullmodsEnabled,NPC Hullmods Enabled,Boolean,true,,"TCO's hullmods on NPC ships (enemies and allies; never your fleet), fitted when a fleet is first built, paid for with capacitors and vents.",,,Campaign and NPC fleets
-opBonusPercent,Extra ordnance points (percent),Double,10.0,,"every ship (yours and NPCs') gets this %% more ordnance points, room for TCO's hullmods (0 = off)",0,100,Campaign and NPC fleets
-npcHullmodChanceMult,NPC Hullmod Chance x,Double,1.0,,"scales the chances of the boarding bay, tug and combat hullmods",0,1,Campaign and NPC fleets
-npcSupportMinFleet,NPC Support Min Fleet,Int,2,,fleets with fewer ships get no required supply ship and tender,0,20,Campaign and NPC fleets
-npcDeploySupport,Enemy always deploys support ships,Boolean,true,,"the enemy always has a supply ship and a tender on the field, if it has them in reserve",,,Campaign and NPC fleets
+tco_header_IRmissilesandflares,IR missiles and flares,Header,IR missiles and flares,,,,,Missiles and flares
+irMaxRange,IR Max Range,Double,1500.0,,"Every guided missile launcher, from any mod, is sorted into IR or radar guidance.",0,15000,Missiles and flares
+missileSprintEnabled,Terminal sprint for radar missiles,Boolean,true,,Radar-guided missiles sprint for their target over the last stretch,,,Missiles and flares
+missileSprintRange,Terminal sprint starts within,Double,1500.0,,Terminal sprint starts this far from the target,0,15000,Missiles and flares
+missileSprintSpeedMult,Terminal sprint: speed x,Double,2.0,,Terminal sprint: missile top speed x this,0,20.0,Missiles and flares
+missileSprintAccelMult,Terminal sprint: acceleration x,Double,3.0,,Terminal sprint: missile acceleration x this,0,30.0,Missiles and flares
+missileDamageBonus,Missile damage bonus (percent),Double,50.0,,"Every missile, on every ship, does this much more damage (percent)",0,500,Missiles and flares
+tandemPenetrationLoss,Tandem Warheads: lost per penetration,Double,0.5,,Tandem Warheads: share of the warhead spent going through a shield or an ERA charge,0,5.0,Missiles and flares
+irLockEnabled,IR Lock Enabled,Boolean,true,,IR missiles lock on to heat: engines and high flux make a ship easier to track.,,,Missiles and flares
+flaresEnabled,Flares Enabled,Boolean,true,,Every ship carries flares to decoy IR missiles.,,,Missiles and flares
+flaresFrigate,Flares Frigate,Int,30,,,0,300,Missiles and flares
+flaresDestroyer,Flares Destroyer,Int,60,,,0,600,Missiles and flares
+flaresCruiser,Flares Cruiser,Int,90,,,0,900,Missiles and flares
+flaresCapital,Flares Capital,Int,120,,,0,1200,Missiles and flares
+flareSalvoFrigate,Flare Salvo Frigate,Int,2,,,0,20,Missiles and flares
+flareSalvoDestroyer,Flare Salvo Destroyer,Int,3,,,0,30,Missiles and flares
+flareSalvoCruiser,Flare Salvo Cruiser,Int,4,,,0,40,Missiles and flares
+flareSalvoCapital,Flare Salvo Capital,Int,5,,,0,50,Missiles and flares
+ecdFrigateMult,ECD Frigate x,Double,2.0,,,0,20.0,Missiles and flares
+ecdOtherMult,ECD Other x,Double,1.5,,,0,15.0,Missiles and flares
+flareLife,Flare Life,Double,3.5,,,0,35.0,Missiles and flares
+flareCooldown,Flare Cooldown,Double,0.3,,,0,3.0,Missiles and flares
+flareAutoCooldown,Flare Auto Cooldown,Double,2.5,,,0,25.0,Missiles and flares
+flaresAutoPlayer,Flares Auto Player,Boolean,true,,,,,Missiles and flares
+flareThreatRange,Flare Threat Range,Double,1200.0,,,0,12000,Missiles and flares
+flareRange,Flare Range,Double,700.0,,,0,7000,Missiles and flares
+flareChanceCold,Flare Chance Cold,Double,0.95,,,0,1,Missiles and flares
+flareChanceHot,Flare Chance Hot,Double,0.25,,,0,1,Missiles and flares
+irccmChanceCold,IRCCM Chance Cold,Double,0.55,,IRCCM: chance for a single flare to decoy a missile off a cold target.,0,1,Missiles and flares
+irccmBlanketStart,IRCCM Blanket Start,Int,6,,,0,60,Missiles and flares
+irccmChanceMax,IRCCM Chance Max,Double,0.6,,,0,1,Missiles and flares
+flareSystemReloads,Flare System Reloads,Boolean,true,,Ships with a flare ship system get this many reloads instead.,,,Missiles and flares
+flareReloads,Flare Reloads,Int,2,,,0,20,Missiles and flares
+tco_header_Commandships,Command ships,Header,Command ships,,,,,Command ships
+cicRadarPower,CIC: radar power x,Double,2.5,,Combat Information Center: how much stronger its radar is.,0,25.0,Command ships
+auxCicRadarPower,Auxiliary CIC: radar power x,Double,1.6,,,0,16.0,Command ships
+cicRcsMult,Command ships: radar cross section x,Double,1.25,,,0,12.5,Command ships
+sectorPowerMult,Sector scan: power inside the cone x,Double,2.0,,,0,20.0,Command ships
+sectorOutsideMult,Sector scan: power outside the cone x,Double,0.3,,,0,3.0,Command ships
+sectorArc,Sector scan: cone width (degrees),Double,60.0,,,0,600,Command ships
+aiRelayMaxSeconds,Reports reach the side within (s),Double,10.0,,"How long it takes a sighting to reach the rest of the fleet, without a command ship.",0,100,Command ships
+auxCicRelayMaxSeconds,With an Auxiliary CIC: within (s),Double,6.0,,,0,60,Command ships
+cicRelayMaxSeconds,With a CIC: within (s),Double,3.0,,,0,30,Command ships
+decapSeconds,CIC lost: picture down for (s),Double,10.0,,How long a fleet is without its picture after losing its CIC.,0,100,Command ships
+auxTakeoverSeconds,Auxiliary CIC takes over after (s),Double,3.0,,,0,30,Command ships
+ewEnabled,Electronic warfare,Boolean,true,,"Electronic warfare: spot jamming, command-ship EW modes, fleet emission control",,,Command ships
+cicSpotTargets,Spot jamming: CIC targets,Int,4,,"Spot jamming: radars a CIC scrambles at once (an Auxiliary CIC 2, the ECM Package 1)",0,40,Command ships
+spotRangeCic,Spot jamming reach: CIC,Double,9000.0,,Spot jamming reach of a CIC,0,90000,Command ships
+spotRangeAux,Spot jamming reach: Auxiliary CIC,Double,7000.0,,Spot jamming reach of an Auxiliary CIC,0,70000,Command ships
+spotRangeEcm,Spot jamming reach: ECM Package,Double,5000.0,,Spot jamming reach of the ECM Package,0,50000,Command ships
+burnThroughFraction,Burn-through (share of radar range),Double,0.25,,A scrambled radar still works out to this share of its range (burn-through),0,1,Command ships
+scramblePowerMult,Scrambled radar power x,Double,0.02,,"Beyond burn-through, a scrambled radar works at this share of its power",0,1.0,Command ships
+barrageRadiusMult,Barrage radius x,Double,2.5,,Barrage jamming covers this times the ship's jammer radius,0,25.0,Command ships
+barrageNoiseMult,Barrage strength x,Double,1.5,,Barrage jamming is this times as strong as the noise jammer,0,15.0,Command ships
+missileDefenceRangeMult,Missile defence range x,Double,2.0,,Missile defence covers this times the ECM range,0,20.0,Command ships
+missileDefenceChannelsCic,Missile defence channels: CIC,Int,8,,Missile defence: radar missiles a CIC jams at once,0,80,Command ships
+missileDefenceChannelsAux,Missile defence channels: Auxiliary CIC,Int,4,,Missile defence: radar missiles an Auxiliary CIC jams at once,0,40,Command ships
+fireControlRangeCic,Fire-control disruption reach: CIC,Double,6000.0,,Fire-control disruption reach of a CIC,0,60000,Command ships
+fireControlRangeAux,Fire-control disruption reach: Auxiliary CIC,Double,4000.0,,Fire-control disruption reach of an Auxiliary CIC,0,40000,Command ships
+fireControlRangePenalty,Fire-control disruption: range cut,Double,0.15,,Fire-control disruption: enemy weapon range cut by this share,0,1.5,Command ships
+fireControlAccuracyPenalty,Fire-control disruption: accuracy cut,Double,0.3,,Fire-control disruption: enemy autofire accuracy down by this,0,3.0,Command ships
+fireControlRecoilPenalty,Fire-control disruption: recoil up,Double,0.3,,Fire-control disruption: enemy recoil up by this share,0,3.0,Command ships
+barragePowerPerSecond,Barrage: power per second (share),Double,0.008,,A command ship's area jamming (barrage): share of reactor capacity per second while on,0,1.0,Command ships
+fireControlPowerPerSecond,Fire control: power per second (share),Double,0.005,,Fire-control disruption: share of reactor capacity per second while it disrupts someone,0,1.0,Command ships
+missileDefencePowerPerMissile,Command ship missile jamming: power per missile (share),Double,0.005,,A command ship's missile jamming: share of reactor capacity per second per missile jammed,0,1.0,Command ships
+missileJamAutoMinPower,Missile jamming AUTO: keep power above (share),Double,0.25,,Missile jamming on AUTO only jams while the ship has more than this share of power,0,2.5,Command ships
+dfReductionCic,Direction finding: CIC,Double,0.8,,Direction finding with a CIC: ESM error x (1 - this) for listeners at right angles,0,8.0,Command ships
+dfReductionAux,Direction finding: Auxiliary CIC,Double,0.6,,The same with only an Auxiliary CIC,0,6.0,Command ships
+fleetWarningLocks,Fleet warnings: enemy radar locks,Boolean,false,,Warn every time an enemy radar locks one of your ships.,,,Command ships
+fleetWarnings,Fleet warnings (with a command ship),Boolean,true,,"With a CIC or Auxiliary CIC: warnings for radar locks, missile launches, new contacts, jamming",,,Command ships
+threatBoard,Threat board in RTS mode (with a command ship),Boolean,true,,"With a CIC or Auxiliary CIC, in RTS mode: the threat board (known enemies by threat)",,,Command ships
+cicGuidanceRange,Missile guidance reach: CIC,Double,12000.0,,Third-party guidance: a CIC's radar track guides friendly radar missiles within this of it,0,120000,Command ships
+auxGuidanceRange,Missile guidance reach: Auxiliary CIC,Double,8000.0,,The same for an Auxiliary CIC,0,80000,Command ships
+pdNetworkRangeCic,PD network reach: CIC,Double,6000.0,,PD network: friendly ships within this of a CIC with its radar on get the PD range bonus,0,60000,Command ships
+pdNetworkRangeAux,PD network reach: Auxiliary CIC,Double,4000.0,,The same for an Auxiliary CIC,0,40000,Command ships
+pdNetworkRangeBonus,PD network: PD range bonus (percent),Double,25.0,,PD network: point-defence weapon range bonus (percent),0,250,Command ships
+fighterDirectionRangeCic,Fighter direction reach: CIC,Double,8000.0,,Fighter direction: AI carriers within this of a CIC send fighters at its radar tracks,0,80000,Command ships
+fighterDirectionRangeAux,Fighter direction reach: Auxiliary CIC,Double,5000.0,,The same for an Auxiliary CIC,0,50000,Command ships
+picketsCic,Sensor pickets: CIC,Int,3,,Sensor pickets a CIC carries,0,30,Command ships
+picketsAux,Sensor pickets: Auxiliary CIC,Int,2,,Sensor pickets an Auxiliary CIC carries,0,20,Command ships
+picketReserveSquadronsCic,Picket reserve squadrons: CIC,Int,2,,Extra squadrons of pickets a CIC keeps in reserve to replace losses,0,20,Command ships
+picketReserveSquadronsAux,Picket reserve squadrons: Auxiliary CIC,Int,0,,The same for an Auxiliary CIC,0,1,Command ships
+picketDistance,Pickets stand ahead by,Double,5000.0,,Pickets stand this far ahead of their command ship,0,50000,Command ships
+picketSpread,Picket fan spacing (degrees),Double,35.0,,Degrees between pickets in the fan,0,350,Command ships
+picketRadarPower,Picket radar power x,Double,0.5,,A picket's radar power (its radar reaches the square root of this as far),0,5.0,Command ships
+picketAiDelay,AI launches pickets after (s),Double,10.0,,AI command ships launch their pickets this many seconds into the battle,0,100,Command ships
+aiEmconArmCount,AI goes quiet at this many incoming ARMs,Int,2,,AI fleets with a command ship go quiet (EMCON) while this many of your ARMs home on them,0,20,Command ships
+aiEmconSeconds,AI stays quiet after the last ARM (s),Double,12.0,,and stay quiet this long after the last one,0,120,Command ships
+cicKeepBackRange,AI command ships keep back from enemies within,Double,4000.0,,AI command ships back off from known enemies within this,0,40000,Command ships
+spotJamPowerPerSecond,Spot jamming: power per radar per second (share),Double,0.002,,Spot jamming: share of reactor capacity per scrambled radar per second,0,1.0,Command ships
+ewAiMinPower,AI stops EW below power (share),Double,0.3,,AI command ships stop electronic warfare below this share of power,0,3.0,Command ships
+tco_header_Fogofwar,Fog of war,Header,Fog of war,,,,,AI and NPC fleets
+fogOfWar,Fog of war,Boolean,true,,"In RTS mode, hide what your ships can't see.",,,AI and NPC fleets
+fogHideWhenPiloting,Fog Hide When Piloting,Boolean,true,,Also hide unseen enemies while you fly a ship.,,,AI and NPC fleets
+sightRangeMult,Sight Range x,Double,0.8,,,0,8.0,AI and NPC fleets
+fogDarkness,Fog Darkness,Double,0.6,,,0,6.0,AI and NPC fleets
+fogLastSeenSeconds,Fog Last Seen Seconds,Double,20.0,,,0,200,AI and NPC fleets
+missileCamSight,Missile camera: sight around the missile,Double,1000.0,,"Missile camera: how much it reveals around the missile, on your screen only.",0,10000,AI and NPC fleets
+missileCamLingerSeconds,Missile camera: stay on a hit for (s),Double,1.5,,,0,15.0,AI and NPC fleets
+aiBlindToUnseen,AI only knows what its side has found,Boolean,true,,AI ships only know about enemies their side has seen or tracked on radar.,,,AI and NPC fleets
+aiBlindGraceSeconds,AI remembers a lost contact for (s),Double,3.0,,an enemy that slips out of sight is still known for this long,0,30,AI and NPC fleets
+aiSearchEnabled,AI search and destroy,Boolean,true,,Enemy warships with nothing to fight go hunting in groups.,,,AI and NPC fleets
+aiSearchGroupSize,Search group size (ships),Int,3,,,0,30,AI and NPC fleets
+aiSearchEngageRange,Search: stop when an enemy is within,Double,4000.0,,,0,40000,AI and NPC fleets
+aiSearchMemorySeconds,Search: remember last seen for (s),Double,60.0,,,0,600,AI and NPC fleets
+aiSearchReplanSeconds,Search: re-plan every (s),Double,25.0,,,0,250,AI and NPC fleets
+tco_header_AI,AI,Header,AI,,,,,AI and NPC fleets
+powerAiEnabled,Power AI Enabled,Boolean,true,,"Power-aware AI, for every ship the AI flies: enemies, allies, and your RTS units on default AI.",,,AI and NPC fleets
+powerAiShieldReserve,Power AI Shield Reserve,Double,0.25,,Share of power AI ships keep for their shields.,0,2.5,AI and NPC fleets
+powerAiLow,Power AI Low,Double,0.35,,"below this share, only the main weapon groups fire",0,3.5,AI and NPC fleets
+powerAiBackOff,Power AI Back Off,Double,0.15,,"below this (or out of power), shielded ships pull back and stop pursuing...",0,1.5,AI and NPC fleets
+powerAiRecover,Power AI Recover,Double,0.4,,...until power is back to this share,0,4.0,AI and NPC fleets
+logisticsAiEnabled,Logistics AI Enabled,Boolean,true,,"Logistics AI, for ships the game's AI flies (not your ships while RTS mode is on).",,,AI and NPC fleets
+logisticsAmmoLow,Logistics Ammo Low,Double,0.3,,a ship below this share of its ammo goes to a supply ship...,0,3.0,AI and NPC fleets
+logisticsAmmoDone,Logistics Ammo Done,Double,0.85,,...and returns to the fight once back to this share,0,8.5,AI and NPC fleets
+logisticsRepairParts,Logistics Repair Parts,Int,2,,a ship with this many destroyed weapons or engines goes to a tender,0,20,AI and NPC fleets
+supportRolesEnabled,Support Roles Enabled,Boolean,true,,AI fleets short of supply ships and tenders give some ships those jobs.,,,AI and NPC fleets
+supportMinFleet,Support Min Fleet,Int,4,,fleets with fewer ships get no roles,0,40,AI and NPC fleets
+supportShipsPer,Support Ships Per,Double,8.0,,one supply ship and one tender per this many ships (at least one each),0,80,AI and NPC fleets
+supportLogisticsChance,Support Logistics Chance,Double,1.0,,Chance for civilian and logistics hulls to get support jobs before warships.,0,1,AI and NPC fleets
+aiBoardingEnabled,AI Boarding Enabled,Boolean,true,,AI fleets get boarding ships and board your ships.,,,AI and NPC fleets
+boarderShipsPer,Boarder Ships Per,Double,8.0,,,0,80,AI and NPC fleets
+aiBoardingMargin,AI Boarding Margin,Double,1.3,,,0,13.0,AI and NPC fleets
+tco_header_CampaignandNPCfleets,Campaign and NPC fleets,Header,Campaign and NPC fleets,,,,,AI and NPC fleets
+npcCicFleetPoints,NPC CIC: fleets of at least (FP),Double,250.0,,Smallest NPC fleet (in fleet points) that can have a CIC.,0,2500,AI and NPC fleets
+npcCicChance,NPC CIC: chance,Double,0.7,,,0,1,AI and NPC fleets
+npcAuxFleetPoints,NPC Auxiliary CIC: fleets of at least (FP),Double,100.0,,,0,1000,AI and NPC fleets
+npcAuxChance,NPC Auxiliary CIC: chance,Double,0.5,,,0,1,AI and NPC fleets
+npcAuxSmallChance,NPC Auxiliary CIC: chance in small fleets,Double,0.05,,,0,1,AI and NPC fleets
+npcHullmodsEnabled,NPC Hullmods Enabled,Boolean,true,,NPC ships get TCO's hullmods.,,,AI and NPC fleets
+opBonusPercent,Extra ordnance points (percent),Double,10.0,,"Extra ordnance points for every ship, to make room for TCO's hullmods.",0,100,AI and NPC fleets
+npcHullmodChanceMult,NPC Hullmod Chance x,Double,1.0,,"scales the chances of the boarding bay, tug and combat hullmods",0,1,AI and NPC fleets
+npcSupportMinFleet,NPC Support Min Fleet,Int,2,,fleets with fewer ships get no required supply ship and tender,0,20,AI and NPC fleets
+npcDeploySupport,Enemy always deploys support ships,Boolean,true,,"the enemy always has a supply ship and a tender on the field, if it has them in reserve",,,AI and NPC fleets
+tco_header_PatchLib,PatchLib,Header,PatchLib,,,,,PatchLib and debug
+patchWeaponArcs,Hide weapon arcs (patch),Boolean,true,,Hide weapon arcs in RTS mode.,,,PatchLib and debug
+patchFog,Fog hides shots and effects (patch),Boolean,true,,"Fog of war also hides enemy shots, missiles and explosions.",,,PatchLib and debug
+patchRefitCards,Refit cards for the open ship (patch),Boolean,true,,Show the open ship's numbers on refit weapon cards.,,,PatchLib and debug
+patchCardColours,Colour ship-changed card values (patch),Boolean,true,,Ship-changed values on weapon cards in green instead of a (+N%%) mark.,,,PatchLib and debug
+patchAiFog,AI fog uses TCO sight (patch),Boolean,true,,The AI's fog of war uses TCO's sight and radar.,,,PatchLib and debug
+patchMissionMaps,Bigger maps in missions (patch),Boolean,true,,Missions use the bigger battle maps too.,,,PatchLib and debug
+patchSimulatorMaps,Bigger maps in the simulator (patch),Boolean,true,,The refit simulator uses the bigger battle maps too.,,,PatchLib and debug
+patchRetreatEdge,Patch Retreat Edge,Boolean,true,,Ships must reach the very edge of the map to retreat.,,,PatchLib and debug
+patchAiPower,AI rations power like flux (patch),Boolean,true,,The game's AI treats low power like high flux.,,,PatchLib and debug
+patchRefitPower,Power stats in the refit screen (patch),Boolean,true,,Show power stats in the refit screen.,,,PatchLib and debug
+patchKillFeed,Hide TCO craft from the kill feed (patch),Boolean,true,,"Keep TCO's shuttles, pods and drones out of the kill feed.",,,PatchLib and debug
+tco_header_Debug,Debug,Header,Debug,,,,,PatchLib and debug
+debugEsmAlways,Show all ESM guesses (both sides),Boolean,false,,"Show every ESM guess, for both sides.",,,PatchLib and debug
+debugEnemyRadarRange,Show enemy radar ranges,Boolean,false,,dashed red ring round every enemy radar: its reach against a capital (faint when switched off),,,PatchLib and debug
+debugRadarDetection,Show enemy radar detection for the selected ship,Boolean,false,,Show how close enemy radars must be to find your selected ships.,,,PatchLib and debug
+aiSearchLog,Log enemy search orders,Boolean,false,,log every enemy search order to starsector.log,,,PatchLib and debug
+debugRadarLaunchLog,Log held radar/ARM missile launches,Boolean,false,,log why radar and anti-radiation missile launchers are held back (once a second per ship),,,PatchLib and debug
+debugRetreatLog,Log retreating ships,Boolean,false,,"Log what retreating ships are doing, to starsector.log.",,,PatchLib and debug

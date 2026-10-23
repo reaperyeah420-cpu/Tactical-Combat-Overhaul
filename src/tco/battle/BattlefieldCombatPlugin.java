@@ -21,6 +21,8 @@ public class BattlefieldCombatPlugin extends BaseEveryFrameCombatPlugin {
     private CombatEngineAPI engine;
     private final ArmorListener armor = new ArmorListener();
 
+    public static final String MISSILE_DAMAGE_ID = "tco_missile_damage";
+
     @Override
     public void init(CombatEngineAPI engine) {
         this.engine = engine;
@@ -37,6 +39,10 @@ public class BattlefieldCombatPlugin extends BaseEveryFrameCombatPlugin {
             if (ship.getCustomData().containsKey(DONE_KEY)) continue;
             ship.setCustomData(DONE_KEY, Boolean.TRUE);
             if (TcoSettings.weaponRangeMult != 1f) ship.addListener(new RangeListener());
+            // Missiles hit harder (fighters' too)
+            if (TcoSettings.missileDamageBonus > 0f) {
+                ship.getMutableStats().getMissileWeaponDamageMult().modifyPercent(MISSILE_DAMAGE_ID, TcoSettings.missileDamageBonus);
+            }
             if (TcoSettings.armorEnabled && !ship.isFighter()) ship.addListener(armor);
             if (TcoSettings.armorBoost != 1f && !ship.isFighter()) boostArmor(ship);
         }

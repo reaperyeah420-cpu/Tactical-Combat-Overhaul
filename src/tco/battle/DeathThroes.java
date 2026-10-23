@@ -25,6 +25,7 @@ import com.fs.starfarer.api.input.InputEventAPI;
 
 import tco.TcoSettings;
 import tco.ammo.AmmoRules;
+import tco.AiUtil;
 import tco.dock.RepairDock;
 import tco.fob.InertAI;
 import tco.fob.SupplyFob;
@@ -171,7 +172,7 @@ public class DeathThroes extends BaseEveryFrameCombatPlugin {
             ship.getFluxTracker().forceOverload(duration + 1f);
             if (ship.getEngineController() != null) ship.getEngineController().forceFlameout(true);
             ship.setHoldFire(true);
-            if (ship != engine.getPlayerShip()) ship.setShipAI(new InertAI());
+            if (!AiUtil.playerFlying(engine, ship)) ship.setShipAI(new InertAI());
         } catch (RuntimeException e) {
             Global.getLogger(DeathThroes.class).warn("TCO: could not disable dying ship " + ship.getName(), e);
         }

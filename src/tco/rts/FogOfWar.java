@@ -11,11 +11,16 @@ import java.util.Set;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.util.vector.Vector2f;
 
+import com.fs.starfarer.api.combat.BeamAPI;
 import com.fs.starfarer.api.combat.CombatEngineAPI;
+import com.fs.starfarer.api.combat.CombatEntityAPI;
+import com.fs.starfarer.api.combat.DamagingProjectileAPI;
+import com.fs.starfarer.api.combat.EmpArcEntityAPI;
 import com.fs.starfarer.api.combat.ShipAPI;
 import com.fs.starfarer.api.combat.ViewportAPI;
 
 import tco.TcoSettings;
+import tco.radar.SensorPickets;
 
 /**
  * Fog of war for RTS mode: shades what the player's side can't see, hides enemy ships in it and leaves
@@ -33,6 +38,8 @@ public final class FogOfWar {
     private static boolean active;
     private static boolean shading;
     private static final List<float[]> eyes = new ArrayList<float[]>();
+    // Sight for the player's eyes only (the missile camera): ships there draw, but stay hidden for every rule
+    private static final List<float[]> viewEyes = new ArrayList<float[]>();
     private static final Map<ShipAPI, Float> alpha = new HashMap<ShipAPI, Float>();
     private static final Map<ShipAPI, float[]> lastSeen = new HashMap<ShipAPI, float[]>();
     private static final Set<ShipAPI> seen = new HashSet<ShipAPI>();
@@ -57,9 +64,61 @@ public final class FogOfWar {
         return !canSee(ship.getLocation(), ship.getCollisionRadius() * 0.5f);
     }
 
+    /** Drawn hidden: hidden, and not in the view-only sight either (what the screen shows, nothing else). */
+    public static boolean isDrawnHidden(ShipAPI ship) {
+        if (!isHidden(ship)) return false;
+        return !canSeeView(ship.getLocation(), ship.getCollisionRadius() * 0.5f);
+    }
+
+    /** For drawing only: the point shows on screen (also inside the view-only sight). */
+    public static boolean isVisibleView(Vector2f point, float radius) {
+        return !isActive() || point == null || canSeeView(point, radius);
+    }
+
+    /** View-only sight around a point (the missile camera); replaces the previous one. */
+    public static void setViewEye(Vector2f at, float radius) {
+        viewEyes.clear();
+        if (at != null && radius > 0f) viewEyes.add(new float[] { at.x, at.y, radius });
+    }
+
+    public static void clearViewEye() {
+        viewEyes.clear();
+    }
+
     /** The player's side can see the point (true while off). */
     public static boolean isVisible(Vector2f point) {
         return !isActive() || canSee(point, 0f);
+    }
+
+    /** The player's side can see anything of this radius around the point (true while off). */
+    public static boolean isVisible(Vector2f point, float radius) {
+        return !isActive() || point == null || canSee(point, radius);
+    }
+
+    /**
+     * For the render patches: an entity the player's side can't see. Hidden enemy ships once faded out, and
+     * enemy shots, beams, EMP arcs and flares out of sight. The player's and allies' own always draw.
+     */
+    public static boolean hidesRender(Object entity) {
+        if (!isActive() || eyes.isEmpty()) return false;
+        if (entity instanceof ShipAPI) {
+            ShipAPI ship = (ShipAPI) entity;
+            if (!isDrawnHidden(ship)) return false;
+            Float a = alpha.get(ship);
+            return a != null && a <= 0.01f;
+        }
+        if (entity instanceof BeamAPI) {
+            BeamAPI beam = (BeamAPI) entity;
+            if (beam.getSource() == null || beam.getSource().getOwner() == 0) return false;
+            return !canSeeView(beam.getFrom(), 0f) && !canSeeView(beam.getTo(), 0f);
+        }
+        if (entity instanceof DamagingProjectileAPI || entity instanceof EmpArcEntityAPI
+                || (entity instanceof CombatEntityAPI && entity.getClass().getName().endsWith(".systems.Flare"))) {
+            CombatEntityAPI e = (CombatEntityAPI) entity;
+            if (e.getOwner() == 0) return false;
+            return !canSeeView(e.getLocation(), e.getCollisionRadius());
+        }
+        return false;
     }
 
     public static float sightRange(ShipAPI ship) {
@@ -67,7 +126,14 @@ public final class FogOfWar {
     }
 
     private static boolean reveals(ShipAPI ship) {
-        if (ship.getOwner() != 0 || !ship.isAlive() || ship.isHulk()) return false;
+        return reveals(ship, 0);
+    }
+
+    /** A ship that gives its side sight (same rules as the engine's fog, plus no shuttle pods). */
+    public static boolean reveals(ShipAPI ship, int side) {
+        if (ship.getOwner() != side || !ship.isAlive() || ship.isHulk()) return false;
+        // Sensor pickets are eyes, though drones
+        if (SensorPickets.isPicket(ship)) return true;
         // Shuttle pods include the RTS command pod
         if (ship.isDrone() || ship.isStationModule() || ship.isShuttlePod()) return false;
         return !ship.isFighter() || ship.isWingLeader();
@@ -75,6 +141,16 @@ public final class FogOfWar {
 
     private static boolean canSee(Vector2f p, float slack) {
         for (float[] eye : eyes) {
+            float dx = p.x - eye[0], dy = p.y - eye[1];
+            float r = eye[2] + slack;
+            if (dx * dx + dy * dy <= r * r) return true;
+        }
+        return false;
+    }
+
+    private static boolean canSeeView(Vector2f p, float slack) {
+        if (canSee(p, slack)) return true;
+        for (float[] eye : viewEyes) {
             float dx = p.x - eye[0], dy = p.y - eye[1];
             float r = eye[2] + slack;
             if (dx * dx + dy * dy <= r * r) return true;
@@ -90,6 +166,7 @@ public final class FogOfWar {
             lastSeen.clear();
             seen.clear();
             overlayHidden.clear();
+            viewEyes.clear();
         }
         // Sight range for every ship (the engine fog reads the same stat)
         for (ShipAPI ship : engine.getShips()) {
@@ -115,6 +192,8 @@ public final class FogOfWar {
         for (ShipAPI ship : engine.getShips()) {
             if (ship.getOwner() == 0 || ship.getOwner() == 100) continue;
             boolean hidden = isHidden(ship);
+            // Drawing follows the view-only sight too; markers and rules don't
+            boolean drawnHidden = hidden && isDrawnHidden(ship);
             Float current = alpha.get(ship);
             float a = current == null ? 1f : current;
             boolean marks = ship.isAlive() && !ship.isHulk() && !ship.isFighter() && !ship.isDrone();
@@ -127,34 +206,48 @@ public final class FogOfWar {
                 if (marks) seen.add(ship);
             }
             // The reticle ignores ship alpha: hide it separately
-            if (hidden && !overlayHidden.contains(ship) && !ship.isForceHideFFOverlay()) {
+            if (drawnHidden && !overlayHidden.contains(ship) && !ship.isForceHideFFOverlay()) {
                 ship.setForceHideFFOverlay(true);
                 overlayHidden.add(ship);
-            } else if (!hidden && overlayHidden.remove(ship)) {
+            } else if (!drawnHidden && overlayHidden.remove(ship)) {
                 ship.setForceHideFFOverlay(false);
             }
-            float target = hidden ? 0f : 1f;
+            float target = drawnHidden ? 0f : 1f;
             if (a < target) a = Math.min(target, a + FADE_PER_SECOND * amount);
             else if (a > target) a = Math.max(target, a - FADE_PER_SECOND * amount);
-            if (current == null && a >= 1f && !hidden) continue;
+            if (current == null && a >= 1f && !drawnHidden) continue;
             ship.setExtraAlphaMult2(a);
-            if (a >= 1f && !hidden) alpha.remove(ship);
+            if (a >= 1f && !drawnHidden) alpha.remove(ship);
             else alpha.put(ship, a);
         }
-        // Drop departed ships and expired markers
+        // Drop departed ships and expired markers. A ship that changed sides while faded (captured by
+        // boarders, now ours) is skipped by the loop above, so it's shown again here
         for (Iterator<ShipAPI> it = alpha.keySet().iterator(); it.hasNext();) {
             ShipAPI ship = it.next();
-            if (!engine.isEntityInPlay(ship)) it.remove();
+            if (!engine.isEntityInPlay(ship)) {
+                it.remove();
+            } else if (ship.getOwner() == 0 || ship.getOwner() == 100) {
+                ship.setExtraAlphaMult2(1f);
+                it.remove();
+            }
         }
         for (Iterator<ShipAPI> it = seen.iterator(); it.hasNext();) {
-            if (!engine.isEntityInPlay(it.next())) it.remove();
+            ShipAPI ship = it.next();
+            if (!engine.isEntityInPlay(ship) || ship.getOwner() == 0 || ship.getOwner() == 100) it.remove();
         }
         for (Iterator<ShipAPI> it = overlayHidden.iterator(); it.hasNext();) {
-            if (!engine.isEntityInPlay(it.next())) it.remove();
+            ShipAPI ship = it.next();
+            if (!engine.isEntityInPlay(ship)) {
+                it.remove();
+            } else if (ship.getOwner() == 0 || ship.getOwner() == 100) {
+                ship.setForceHideFFOverlay(false);
+                it.remove();
+            }
         }
         for (Iterator<Map.Entry<ShipAPI, float[]>> it = lastSeen.entrySet().iterator(); it.hasNext();) {
             Map.Entry<ShipAPI, float[]> e = it.next();
             if (!e.getKey().isAlive() || e.getKey().isHulk() || !engine.isEntityInPlay(e.getKey())
+                    || e.getKey().getOwner() == 0 || e.getKey().getOwner() == 100
                     || now - e.getValue()[2] > TcoSettings.fogLastSeenSeconds) {
                 it.remove();
             }
@@ -182,6 +275,9 @@ public final class FogOfWar {
         List<float[]> near = new ArrayList<float[]>();
         float cx = x0 + w / 2f, cy = y0 + h / 2f, half = (float) Math.hypot(w, h) / 2f;
         for (float[] eye : eyes) {
+            if (Math.hypot(eye[0] - cx, eye[1] - cy) < eye[2] + half) near.add(eye);
+        }
+        for (float[] eye : viewEyes) {
             if (Math.hypot(eye[0] - cx, eye[1] - cy) < eye[2] + half) near.add(eye);
         }
         float dark = Math.min(1f, TcoSettings.fogDarkness);

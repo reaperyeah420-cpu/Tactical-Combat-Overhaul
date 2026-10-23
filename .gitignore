@@ -1,1 +1,5 @@
 jars/
+.project
+.classpath
+.settings/
+.jdtls-out/

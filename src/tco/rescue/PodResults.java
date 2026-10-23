@@ -8,10 +8,7 @@ import com.fs.starfarer.api.Global;
 import com.fs.starfarer.api.campaign.BaseCampaignEventListener;
 import com.fs.starfarer.api.campaign.CampaignFleetAPI;
 import com.fs.starfarer.api.campaign.CargoAPI;
-import com.fs.starfarer.api.campaign.InteractionDialogAPI;
 import com.fs.starfarer.api.combat.EngagementResultAPI;
-import com.fs.starfarer.api.impl.campaign.FleetEncounterContext;
-import com.fs.starfarer.api.impl.campaign.FleetInteractionDialogPluginImpl;
 import com.fs.starfarer.api.impl.campaign.ids.Commodities;
 import com.fs.starfarer.api.util.Misc;
 
@@ -20,7 +17,7 @@ import tco.TcoSettings;
 
 /**
  * Settles the player's escape pods after battle: rescued crew are added back after the game's own crew
- * sums, and unreached pods go into the game's recoverable crew (returned only on a win).
+ * sums. Each pod still drifting at the end is picked up with podRescueChanceWin / podRescueChanceLoss.
  */
 public final class PodResults {
 
@@ -42,48 +39,42 @@ public final class PodResults {
             int lostMarines = Math.round(PodLedger.lostMarines());
             List<float[]> drifting = PodLedger.drifting();
             PodLedger.clear();
-            int adriftCrew = 0, adriftMarines = 0;
+            // Pods still drifting at the end: each is found with a chance, better if you hold the field
+            boolean won = result != null && result.didPlayerWin();
+            float chance = won ? TcoSettings.podRescueChanceWin : TcoSettings.podRescueChanceLoss;
+            float foundCrewF = 0f, foundMarinesF = 0f, missedCrewF = 0f, missedMarinesF = 0f;
             for (float[] pod : drifting) {
-                adriftCrew += Math.round(pod[0]);
-                adriftMarines += Math.round(pod[1]);
+                if (Math.random() < chance) {
+                    foundCrewF += pod[0];
+                    foundMarinesF += pod[1];
+                } else {
+                    missedCrewF += pod[0];
+                    missedMarinesF += pod[1];
+                }
             }
-            if (crew + marines + lostCrew + lostMarines + adriftCrew + adriftMarines > 0) {
+            int foundCrew = Math.round(foundCrewF), foundMarines = Math.round(foundMarinesF);
+            int missedCrew = Math.round(missedCrewF), missedMarines = Math.round(missedMarinesF);
+            if (crew + marines + lostCrew + lostMarines + foundCrew + foundMarines + missedCrew + missedMarines > 0) {
                 StringBuilder text = new StringBuilder("Escape pods: ");
                 List<String> parts = new ArrayList<String>();
                 if (crew + marines > 0) parts.add(BattleReport.people(crew, marines) + " rescued during the battle");
                 if (lostCrew + lostMarines > 0) parts.add(BattleReport.people(lostCrew, lostMarines)
                         + " killed when their pods or rescue shuttles were destroyed");
-                if (adriftCrew + adriftMarines > 0) parts.add(BattleReport.people(adriftCrew, adriftMarines)
-                        + " still adrift when it ended (any found are in the recovery report)");
+                if (foundCrew + foundMarines > 0) parts.add(BattleReport.people(foundCrew, foundMarines)
+                        + " picked up after the battle");
+                if (missedCrew + missedMarines > 0) parts.add(BattleReport.people(missedCrew, missedMarines)
+                        + (won ? " never found" : " lost with the battlefield"));
                 for (int i = 0; i < parts.size(); i++) text.append(i == 0 ? "" : "; ").append(parts.get(i));
                 BattleReport.add(text.append(".").toString());
             }
             try {
-                if (crew + marines >= 1) Global.getSector().addTransientScript(new ReturnCrew(crew, marines));
-                float foundCrew = 0f;
-                float foundMarines = 0f;
-                for (float[] pod : drifting) {
-                    if (Math.random() >= TcoSettings.podLeftoverChance) continue;
-                    foundCrew += pod[0];
-                    foundMarines += pod[1];
-                }
-                if (foundCrew + foundMarines >= 1f) addRecoverable(Math.round(foundCrew), Math.round(foundMarines));
+                int backCrew = crew + foundCrew;
+                int backMarines = marines + foundMarines;
+                if (backCrew + backMarines >= 1) Global.getSector().addTransientScript(new ReturnCrew(backCrew, backMarines));
             } catch (RuntimeException e) {
                 Global.getLogger(PodResults.class).warn("TCO: could not settle escape pods", e);
             }
         }
-    }
-
-    private static void addRecoverable(int crew, int marines) {
-        InteractionDialogAPI dialog = Global.getSector().getCampaignUI().getCurrentInteractionDialog();
-        if (dialog == null || !(dialog.getPlugin() instanceof FleetInteractionDialogPluginImpl)) return;
-        Object context = ((FleetInteractionDialogPluginImpl) dialog.getPlugin()).getContext();
-        if (!(context instanceof FleetEncounterContext)) return;
-        CampaignFleetAPI player = Global.getSector().getPlayerFleet();
-        FleetEncounterContext.DataForEncounterSide data = ((FleetEncounterContext) context).getDataFor(player);
-        if (data == null) return;
-        data.getRecoverableCrewLosses().addCrew(crew);
-        data.getRecoverableCrewLosses().addMarines(marines);
     }
 
     /** Returns rescued crew after the game's crew sums. */
@@ -119,7 +110,7 @@ public final class PodResults {
             int marinesBack = Math.min(marines, room - crewBack);
             if (crewBack > 0) cargo.addCommodity(Commodities.CREW, crewBack);
             if (marinesBack > 0) cargo.addMarines(marinesBack);
-            String text = "Rescued from escape pods during the battle: " + crewBack + " crew"
+            String text = "Rescued from escape pods: " + crewBack + " crew"
                     + (marines > 0 ? " and " + marinesBack + " marines" : "") + " are back aboard.";
             int lost = (crew - crewBack) + (marines - marinesBack);
             if (lost > 0) text += " " + lost + " more had no room in the fleet and were lost.";

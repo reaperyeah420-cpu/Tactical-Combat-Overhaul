@@ -11,6 +11,7 @@ import org.lwjgl.opengl.GL11;
 import org.lwjgl.util.vector.Vector2f;
 
 import com.fs.starfarer.api.Global;
+import com.fs.starfarer.api.combat.AutofireAIPlugin;
 import com.fs.starfarer.api.combat.BaseEveryFrameCombatPlugin;
 import com.fs.starfarer.api.combat.CollisionClass;
 import com.fs.starfarer.api.combat.CombatEngineAPI;
@@ -20,8 +21,12 @@ import com.fs.starfarer.api.combat.ShipAPI.HullSize;
 import com.fs.starfarer.api.combat.ShipHullSpecAPI.ShipTypeHints;
 import com.fs.starfarer.api.combat.ViewportAPI;
 import com.fs.starfarer.api.combat.WeaponAPI;
+import com.fs.starfarer.api.combat.WeaponAPI.AIHints;
+import com.fs.starfarer.api.combat.WeaponGroupAPI;
 import com.fs.starfarer.api.input.InputEventAPI;
+import com.fs.starfarer.api.util.Misc;
 
+import tco.AiUtil;
 import tco.Msg;
 import tco.TcoSettings;
 import tco.ai.SupportRoles;
@@ -169,6 +174,7 @@ public class AmmoCombatPlugin extends BaseEveryFrameCombatPlugin {
 
         if (amount > 0f) {
             if (!clips.isEmpty()) trackClips();
+            if (TcoSettings.ammoAiRation) rationAi();
             if (!suppliers.isEmpty()) resupply(amount);
             if (!shuttles.isEmpty()) updateShuttles(amount);
         }
@@ -203,6 +209,52 @@ public class AmmoCombatPlugin extends BaseEveryFrameCombatPlugin {
                 if (weapon.getAmmoTracker() != null) weapon.getAmmoTracker().setAmmoPerSecond(0f);
             }
         }
+    }
+
+    /** Share of a limited weapon's ammo left, magazine and reserve together; -1 if it isn't limited. */
+    public float ammoFraction(WeaponAPI weapon) {
+        Clip clip = clips.get(weapon);
+        if (clip != null) {
+            int max = clip.reserveMax + Math.max(0, weapon.getMaxAmmo());
+            return max <= 0 ? -1f : (clip.reserve + Math.max(0, weapon.getAmmo())) / (float) max;
+        }
+        if (!AmmoRules.canResupply(weapon) || !weapon.usesAmmo() || weapon.getMaxAmmo() <= 0) return -1f;
+        return weapon.getAmmo() / (float) weapon.getMaxAmmo();
+    }
+
+    /**
+     * AI-flown ships running low hold their limited guns for good shots: close range, or a target that is
+     * overloaded, venting or nearly dead. Point defence is left alone.
+     */
+    private void rationAi() {
+        ShipAPI player = engine.getPlayerShip();
+        for (ShipAPI ship : engine.getShips()) {
+            if (!ship.isAlive() || ship.isHulk() || ship.isFighter() || ship.isDrone() || ship.isShuttlePod()) continue;
+            if (AiUtil.playerFlying(engine, ship)) continue;
+            for (WeaponAPI weapon : ship.getAllWeapons()) {
+                if (weapon.isDecorative() || weapon.hasAIHint(AIHints.PD) || weapon.hasAIHint(AIHints.PD_ONLY)) continue;
+                float left = ammoFraction(weapon);
+                if (left < 0f || left >= TcoSettings.ammoAiConserve) continue;
+                if (!goodShot(ship, weapon, left)) weapon.setForceNoFireOneFrame(true);
+            }
+        }
+    }
+
+    private boolean goodShot(ShipAPI ship, WeaponAPI weapon, float left) {
+        ShipAPI target = null;
+        WeaponGroupAPI group = ship.getWeaponGroupFor(weapon);
+        if (group != null && group.isAutofiring()) {
+            AutofireAIPlugin autofire = group.getAutofirePlugin(weapon);
+            if (autofire != null) target = autofire.getTargetShip();
+        }
+        if (target == null) target = ship.getShipTarget();
+        if (target == null || !target.isAlive() || target.isHulk()) return false;
+        boolean critical = left < TcoSettings.ammoAiCritical;
+        // Last rounds aren't spent on fighters
+        if (target.isFighter()) return !critical;
+        if (target.getFluxTracker().isOverloadedOrVenting() || target.getHullLevel() < 0.35f) return true;
+        float gap = Misc.getDistance(weapon.getLocation(), target.getLocation()) - target.getCollisionRadius();
+        return gap <= weapon.getRange() * (critical ? 0.5f : 0.75f);
     }
 
     private boolean isExempt(ShipAPI ship) {

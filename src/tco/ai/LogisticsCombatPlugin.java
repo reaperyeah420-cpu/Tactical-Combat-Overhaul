@@ -43,6 +43,11 @@ public class LogisticsCombatPlugin extends BaseEveryFrameCombatPlugin {
     private static final float INTERVAL = 1f;
     private static final float ERRAND_TIMEOUT = 90f;
     private static final float ERRAND_COOLDOWN = 20f;
+    // Waiting beside the support ship with no ammo or repairs coming: give up after this long
+    private static final float STALL_TIMEOUT = 30f;
+    private static final float ARRIVED = 700f;
+    // Past the ship's longest gun, for an enemy to break off an errand
+    private static final float THREAT_MARGIN = 300f;
     private static final float STATION_MOVE_THRESHOLD = 300f;
 
     private enum Kind { STATION, AMMO, REPAIR, RESTOCK }
@@ -54,6 +59,9 @@ public class LogisticsCombatPlugin extends BaseEveryFrameCombatPlugin {
         ShipAPI support;
         float time = 0f;
         final Vector2f dest = new Vector2f();
+        // Ammo level, or minus broken parts, when it last went up; time since then while beside the support ship
+        float progress = -Float.MAX_VALUE;
+        float stalled = 0f;
     }
 
     private CombatEngineAPI engine;
@@ -175,17 +183,28 @@ public class LogisticsCombatPlugin extends BaseEveryFrameCombatPlugin {
                     if (current != null) release(ship, current, false);
                     ShipAPI fob = nearest(ship, fobs);
                     if (fob != null) start(ship, Kind.RESTOCK, fob, back);
-                } else if (spent.add(ship)) {
+                } else if (friends == null && isPlayers(ship)) {
+                    spent.add(ship);
+                    keepClear(ship, current, side, back, threats);
+                } else {
+                    // Also hands back one kept clear above once warships turn up again
+                    boolean first = spent.add(ship);
                     if (current != null) release(ship, current, false);
-                    goHomeOrFight(ship);
+                    if (first) goHomeOrFight(ship);
                 }
                 continue;
             }
             spent.remove(ship);
             if (friends == null) {
-                // No warships left to support
+                // No warships left to support. The game's AI parks a civilian hull with no friends in place,
+                // so the player's are kept clear of the enemy instead
+                if (isPlayers(ship)) {
+                    keepClear(ship, current, side, back, threats);
+                    continue;
+                }
                 if (current != null) release(ship, current, false);
-                if (alone.add(ship)) goHomeOrFight(ship);
+                // A retreat order the fleet dropped is given again
+                if (alone.add(ship) || SupportRoles.isCivilian(ship)) goHomeOrFight(ship);
                 continue;
             }
             alone.remove(ship);
@@ -246,7 +265,7 @@ public class LogisticsCombatPlugin extends BaseEveryFrameCombatPlugin {
             }
 
             if (current != null) {
-                if (finished(ship, current, ammo, repair)) {
+                if (finished(ship, current, ammo, repair) || enemyClose(ship) || stalled(ship, current, ammo, repair)) {
                     release(ship, current, true);
                 } else {
                     Vector2f dest = besidePoint(current.support, ship, back);
@@ -258,6 +277,8 @@ public class LogisticsCombatPlugin extends BaseEveryFrameCombatPlugin {
                 continue;
             }
             if (cooldowns.containsKey(ship)) continue;
+            // Not while an enemy is at hand: a ship on an errand doesn't fight
+            if (enemyClose(ship)) continue;
 
             if (ammo != null && !supplies.isEmpty() && ammo.ammoLevel(ship) < TcoSettings.logisticsAmmoLow) {
                 ShipAPI nearest = nearest(ship, supplies);
@@ -279,10 +300,12 @@ public class LogisticsCombatPlugin extends BaseEveryFrameCombatPlugin {
             Errand errand = entry.getValue();
             boolean gone = !ship.isAlive() || ship.isHulk() || !engine.isEntityInPlay(ship) || ship.isRetreating();
             boolean takenOver = !AiUtil.isOurs(ship, errand.handle) || RtsCombatPlugin.controls(engine, ship)
-                    || (ship == engine.getPlayerShip() && !engine.isUIAutopilotOn());
+                    || AiUtil.playerFlying(engine, ship);
             if (gone || takenOver) {
                 errand.state.ai.restoreAutofire();
                 it.remove();
+                // A retreat is flown by the game's AI: our errand AI would hold it in place
+                if (ship.isAlive() && ship.isRetreating() && AiUtil.isOurs(ship, errand.handle)) AiUtil.resetDefault(ship);
             }
         }
     }
@@ -318,6 +341,20 @@ public class LogisticsCombatPlugin extends BaseEveryFrameCombatPlugin {
         } catch (RuntimeException e) {
             Global.getLogger(LogisticsCombatPlugin.class).warn("TCO: could not order a spent support ship home", e);
         }
+    }
+
+    private static boolean isPlayers(ShipAPI ship) {
+        return ship.getOwner() == 0 && !ship.isAlly();
+    }
+
+    /** Falls back to its own edge of the map, moving off whenever an enemy comes within reach. */
+    private void keepClear(ShipAPI ship, Errand current, int side, Vector2f back, List<float[]> threats) {
+        if (current != null && current.kind != Kind.STATION) {
+            release(ship, current, false);
+            current = null;
+        }
+        Vector2f edge = clamp(new Vector2f(ship.getLocation().x + back.x * 20000f, ship.getLocation().y + back.y * 20000f));
+        station(ship, current, safe(ship, edge, side, back, threats));
     }
 
     private Vector2f rescuePoint(ShipAPI tender, int side, float range, Vector2f back,
@@ -363,11 +400,40 @@ public class LogisticsCombatPlugin extends BaseEveryFrameCombatPlugin {
         return repair.brokenParts(ship) == 0;
     }
 
+    /** A known enemy warship within the ship's longest gun range (plus a margin). */
+    private boolean enemyClose(ShipAPI ship) {
+        float reach = 600f;
+        for (WeaponAPI weapon : ship.getAllWeapons()) {
+            if (!weapon.isDecorative()) reach = Math.max(reach, weapon.getRange());
+        }
+        reach += THREAT_MARGIN;
+        for (ShipAPI other : engine.getShips()) {
+            if (other.getOwner() == ship.getOwner() || other.getOwner() == 100) continue;
+            if (!other.isAlive() || other.isHulk() || other.isFighter() || other.isShuttlePod() || AmmoRules.isShuttle(other)) continue;
+            if (distance(ship.getLocation(), other.getLocation()) - other.getCollisionRadius() > reach) continue;
+            if (AiAwareness.knowsShip(engine, ship, other)) return true;
+        }
+        return false;
+    }
+
+    /** Beside the support ship and nothing improving for STALL_TIMEOUT. */
+    private boolean stalled(ShipAPI ship, Errand errand, AmmoCombatPlugin ammo, RepairCombatPlugin repair) {
+        float level = errand.kind == Kind.AMMO ? (ammo == null ? 0f : ammo.ammoLevel(ship))
+                : (repair == null ? 0f : -repair.brokenParts(ship));
+        if (level > errand.progress + 0.001f) {
+            errand.progress = level;
+            errand.stalled = 0f;
+            return false;
+        }
+        if (distance(ship.getLocation(), errand.dest) < ARRIVED) errand.stalled += INTERVAL;
+        return errand.stalled >= STALL_TIMEOUT;
+    }
+
     private boolean canTake(ShipAPI ship) {
         if (!ship.isAlive() || ship.isHulk() || ship.isFighter() || ship.isDrone() || ship.isShuttlePod()) return false;
         if (ship.isStation() || ship.isStationModule() || ship.isPiece() || ship.isRetreating()) return false;
         if (AmmoRules.isShuttle(ship) || SupplyFob.isFobPart(ship) || ship.getCustomData().containsKey("tco_captured")) return false;
-        if (ship == engine.getPlayerShip() && !engine.isUIAutopilotOn()) return false;
+        if (AiUtil.playerFlying(engine, ship)) return false;
         if (RtsCombatPlugin.controls(engine, ship)) return false;
         Errand errand = errands.get(ship);
         if (errand != null) return AiUtil.isOurs(ship, errand.handle);
@@ -405,7 +471,7 @@ public class LogisticsCombatPlugin extends BaseEveryFrameCombatPlugin {
     private void release(ShipAPI ship, Errand errand, boolean cooldown) {
         errands.remove(ship);
         errand.state.ai.restoreAutofire();
-        if (AiUtil.isOurs(ship, errand.handle)) ship.resetDefaultAI();
+        if (AiUtil.isOurs(ship, errand.handle)) AiUtil.resetDefault(ship);
         if (cooldown) cooldowns.put(ship, ERRAND_COOLDOWN);
     }
 

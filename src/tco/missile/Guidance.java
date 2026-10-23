@@ -81,6 +81,9 @@ public final class Guidance {
         MissileSpecAPI missile = (MissileSpecAPI) spec.getProjectileSpec();
         String type = missile.getTypeString();
         if (type != null && UNGUIDED.contains(type)) return Kind.NONE;
+        // Two-stage MLRS (Squall): the game's AI only steers briefly near the target, then burns straight, so it is
+        // no long-range radar missile whatever its range; it stays a short-range IR seeker
+        if ("MISSILE_TWO_STAGE_SECOND_UNGUIDED".equals(type)) return Kind.IR;
         ShipHullSpecAPI hull = missile.getHullSpec();
         if (hull != null && hull.getEngineSpec() != null && hull.getEngineSpec().getMaxTurnRate() <= 1f) return Kind.NONE;
         if ("HEATSEEKER".equals(type) || spec.getAIHints() != null && spec.getAIHints().contains(AIHints.HEATSEEKER)) {

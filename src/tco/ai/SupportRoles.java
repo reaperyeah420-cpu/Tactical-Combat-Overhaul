@@ -117,7 +117,7 @@ public final class SupportRoles {
 
         int supplyNeeded = Math.max(1, Math.round(members.size() / Math.max(1f, TcoSettings.supportShipsPer)));
         int tenderNeeded = supplyNeeded;
-        int boarderNeeded = TcoSettings.aiBoardingEnabled
+        int boarderNeeded = TcoSettings.aiBoardingEnabled && TcoSettings.boardingEnabled
                 ? Math.max(1, Math.round(members.size() / Math.max(1f, TcoSettings.boarderShipsPer))) : 0;
         // Ships with a bay or role count toward the quota
         List<FleetMemberAPI> free = new ArrayList<FleetMemberAPI>();

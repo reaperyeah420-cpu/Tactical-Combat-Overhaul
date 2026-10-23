@@ -18,6 +18,7 @@ import com.fs.starfarer.api.combat.ShipHullSpecAPI;
 import com.fs.starfarer.api.combat.ShipHullSpecAPI.ShipTypeHints;
 import com.fs.starfarer.api.combat.ShipVariantAPI;
 import com.fs.starfarer.api.combat.WeaponAPI.AIHints;
+import com.fs.starfarer.api.combat.WeaponAPI.WeaponType;
 import com.fs.starfarer.api.fleet.FleetMemberAPI;
 import com.fs.starfarer.api.impl.campaign.DModManager;
 import com.fs.starfarer.api.impl.campaign.ids.MemFlags;
@@ -26,7 +27,13 @@ import com.fs.starfarer.api.loading.VariantSource;
 import com.fs.starfarer.api.loading.WeaponSpecAPI;
 
 import tco.TcoSettings;
+import tco.hullmods.ArmConversion;
+import tco.hullmods.CombatInformationCenter;
+import tco.hullmods.MilitiaLockers;
+import tco.hullmods.PassiveSensors;
 import tco.hullmods.SecurityForge;
+import tco.hullmods.ThermalDispersal;
+import tco.hullmods.WetMagazines;
 import tco.missile.Guidance;
 
 /**
@@ -140,16 +147,18 @@ public final class NpcHullmods {
             int per = Math.max(1, Math.round(members.size() / Math.max(1f, TcoSettings.supportShipsPer)));
             int supply = per - count(members, RESUPPLY);
             int tender = per - count(members, REPAIR);
-            List<FleetMemberAPI> candidates = supportCandidates(fresh);
-            for (int pass = 0; pass < 2 && (supply > 0 || tender > 0); pass++) {
-                for (FleetMemberAPI member : candidates) {
-                    if (supply <= 0 && tender <= 0) break;
-                    if (hasBay(member)) continue;
-                    String bay = supply >= tender ? RESUPPLY : REPAIR;
-                    // Second pass forces it onto the best candidate
-                    if (install(member, bay, stats, pass == 1)) {
-                        if (bay.equals(RESUPPLY)) supply--;
-                        else tender--;
+            // Logistics hulls take the bays first, made room for if need be; warships only fill what is left
+            for (List<FleetMemberAPI> candidates : supportCandidates(fresh)) {
+                for (int pass = 0; pass < 2 && (supply > 0 || tender > 0); pass++) {
+                    for (FleetMemberAPI member : candidates) {
+                        if (supply <= 0 && tender <= 0) break;
+                        if (hasBay(member)) continue;
+                        String bay = supply >= tender ? RESUPPLY : REPAIR;
+                        // Second pass forces it onto the best candidate
+                        if (install(member, bay, stats, pass == 1)) {
+                            if (bay.equals(RESUPPLY)) supply--;
+                            else tender--;
+                        }
                     }
                 }
             }
@@ -163,7 +172,8 @@ public final class NpcHullmods {
         }
         sortCheapest(warships);
         if (!civilian) {
-            int boarders = Math.round(members.size() / Math.max(1f, TcoSettings.boarderShipsPer)) - count(members, BOARDING);
+            int boarders = !TcoSettings.boardingEnabled ? 0
+                    : Math.round(members.size() / Math.max(1f, TcoSettings.boarderShipsPer)) - count(members, BOARDING);
             for (FleetMemberAPI member : warships) {
                 if (boarders <= 0) break;
                 if (hasBay(member) || member.getHullSpec().getHullSize() == HullSize.CAPITAL_SHIP) continue;
@@ -173,6 +183,7 @@ public final class NpcHullmods {
                 }
                 if (install(member, BOARDING, stats, false)) boarders--;
             }
+            fitCommandShips(fleet, members, fresh, stats, fleetRandom, mult);
             if (warships.size() >= 6 && count(members, TUG) == 0 && fleetRandom.nextFloat() < 0.5f * Math.min(1f, mult)) {
                 for (FleetMemberAPI member : warships) {
                     HullSize size = member.getHullSpec().getHullSize();
@@ -205,9 +216,12 @@ public final class NpcHullmods {
             if (linked && !logistics && r.nextFloat() < (radar ? 0.75f : 0.45f)) {
                 if (install(member, DATALINK, stats, false)) added++;
             }
+            boolean crewed = member.getMinCrew() > 0f && !v.hasHullMod("automated");
             if (logistics) {
                 // Civilian hulls
                 if (r.nextFloat() < 0.1f * q) install(member, "tco_ecd", stats, false);
+                // Freighter crews arm themselves against pirates
+                if (crewed && r.nextFloat() < 0.15f * q) install(member, MilitiaLockers.ID, stats, false);
                 continue;
             }
             if (radar && roll(r, pick(tech, 0.15f, 0.25f, 0.45f) * (big ? 1.3f : small ? 0.7f : 1f) * q)) {
@@ -231,8 +245,69 @@ public final class NpcHullmods {
             if (added < 3 && size != HullSize.FRIGATE && roll(r, pick(tech, 0.15f, 0.12f, 0.06f) * q)) {
                 if (install(member, "tco_spall", stats, false)) added++;
             }
+            // Heavy armour gains most from spreading energy heat
+            if (added < 3 && size != HullSize.FRIGATE && roll(r, pick(tech, 0.12f, 0.08f, 0.04f) * q)) {
+                if (install(member, ThermalDispersal.ID, stats, false)) added++;
+            }
+            // Ships that carry a lot of ammunition
+            if (added < 3 && roll(r, (magazines(v) >= 3 ? 0.15f : 0.05f) * q)) {
+                if (install(member, WetMagazines.ID, stats, false)) added++;
+            }
+            // Scouts first
+            if (added < 3 && roll(r, (small ? 0.12f : 0.06f) * pick(tech, 0.8f, 1f, 1.3f) * q)) {
+                if (install(member, PassiveSensors.ID, stats, false)) added++;
+            }
+            // install() may have swapped in a copy of the variant, so ask the member
+            if (added < 3 && radar && member.getVariant().hasHullMod(PassiveSensors.ID) && roll(r, 0.35f * q)) {
+                if (install(member, ArmConversion.ID, stats, false)) added++;
+            }
             if (added < 3 && big && !member.getVariant().hasHullMod("automated") && roll(r, 0.12f * q)) {
-                install(member, SecurityForge.ID, stats, false);
+                if (install(member, SecurityForge.ID, stats, false)) added++;
+            }
+            if (added < 3 && crewed && roll(r, (big ? 0.12f : 0.08f) * q)) {
+                install(member, MilitiaLockers.ID, stats, false);
+            }
+        }
+    }
+
+    /**
+     * Command ships, military fleets only: a CIC on a capital (the flagship first) in fleets of npcCicFleetPoints or
+     * more; an Auxiliary CIC on a cruiser (not the flagship first) from npcAuxFleetPoints, rarely in smaller ones.
+     * Forced on (OP freed from capacitors and vents), since they are roles, not upgrades.
+     */
+    private static void fitCommandShips(CampaignFleetAPI fleet, List<FleetMemberAPI> members, List<FleetMemberAPI> fresh,
+            MutableCharacterStatsAPI stats, Random r, float mult) {
+        float points = fleet.getFleetPoints();
+        if (points >= TcoSettings.npcCicFleetPoints && count(members, CombatInformationCenter.ID) == 0
+                && r.nextFloat() < TcoSettings.npcCicChance * Math.min(1f, mult)) {
+            List<FleetMemberAPI> capitals = new ArrayList<FleetMemberAPI>();
+            for (FleetMemberAPI member : fresh) {
+                if (member.getHullSpec().getHullSize() == HullSize.CAPITAL_SHIP && !isLogistics(member)) capitals.add(member);
+            }
+            Collections.sort(capitals, new Comparator<FleetMemberAPI>() {
+                @Override
+                public int compare(FleetMemberAPI a, FleetMemberAPI b) {
+                    return (b.isFlagship() ? 1 : 0) - (a.isFlagship() ? 1 : 0);
+                }
+            });
+            for (FleetMemberAPI member : capitals) {
+                if (install(member, CombatInformationCenter.ID, stats, true)) break;
+            }
+        }
+        float aux = points >= TcoSettings.npcAuxFleetPoints ? TcoSettings.npcAuxChance : TcoSettings.npcAuxSmallChance;
+        if (count(members, CombatInformationCenter.AUX_ID) == 0 && r.nextFloat() < aux * Math.min(1f, mult)) {
+            List<FleetMemberAPI> cruisers = new ArrayList<FleetMemberAPI>();
+            for (FleetMemberAPI member : fresh) {
+                if (member.getHullSpec().getHullSize() == HullSize.CRUISER && !isLogistics(member)) cruisers.add(member);
+            }
+            Collections.sort(cruisers, new Comparator<FleetMemberAPI>() {
+                @Override
+                public int compare(FleetMemberAPI a, FleetMemberAPI b) {
+                    return (a.isFlagship() ? 1 : 0) - (b.isFlagship() ? 1 : 0);
+                }
+            });
+            for (FleetMemberAPI member : cruisers) {
+                if (install(member, CombatInformationCenter.AUX_ID, stats, true)) break;
             }
         }
     }
@@ -313,7 +388,8 @@ public final class NpcHullmods {
         return n;
     }
 
-    private static List<FleetMemberAPI> supportCandidates(List<FleetMemberAPI> fresh) {
+    /** Logistics hulls, then warships, each cheapest first. */
+    private static List<List<FleetMemberAPI>> supportCandidates(List<FleetMemberAPI> fresh) {
         List<FleetMemberAPI> logistics = new ArrayList<FleetMemberAPI>();
         List<FleetMemberAPI> warships = new ArrayList<FleetMemberAPI>();
         for (FleetMemberAPI member : fresh) {
@@ -322,8 +398,10 @@ public final class NpcHullmods {
         }
         sortCheapest(logistics);
         sortCheapest(warships);
-        logistics.addAll(warships);
-        return logistics;
+        List<List<FleetMemberAPI>> groups = new ArrayList<List<FleetMemberAPI>>();
+        groups.add(logistics);
+        groups.add(warships);
+        return groups;
     }
 
     private static void sortCheapest(List<FleetMemberAPI> list) {
@@ -361,6 +439,17 @@ public final class NpcHullmods {
             if (w != null && Guidance.firesMissiles(w) && Guidance.of(w) == kind) return true;
         }
         return false;
+    }
+
+    /** Ballistic and missile weapons that use ammo. */
+    private static int magazines(ShipVariantAPI v) {
+        int n = 0;
+        for (String slot : v.getFittedWeaponSlots()) {
+            WeaponSpecAPI w = v.getWeaponSpec(slot);
+            if (w == null || w.getMaxAmmo() <= 0) continue;
+            if (w.getType() == WeaponType.BALLISTIC || w.getType() == WeaponType.MISSILE) n++;
+        }
+        return n;
     }
 
     private static int pdCount(ShipVariantAPI v) {

@@ -1,7 +1,9 @@
 package tco.rts;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.lwjgl.util.vector.Vector2f;
 
@@ -116,8 +118,11 @@ public class UnitState {
     public final List<Order> queue = new ArrayList<Order>();
 
     public boolean vanillaAi = false;
-    // we tick the default AI ourselves for the engine's player-flown ship
-    public ShipAIPlugin manualVanillaAi;
+    // the game's AI on the engine's player ship, ticked by us when the engine doesn't (not on autopilot)
+    ShipAIPlugin manualVanillaAi;
+    Object manualHandle;
+    // personality the stance gave the game's AI (null: the ship's own)
+    public String vanillaPersonality;
 
     public boolean holdFire = false;
 
@@ -144,6 +149,15 @@ public class UnitState {
     public boolean rescueMove;
     public final Vector2f rescuePoint = new Vector2f();
     public boolean pendingClear = false;
+    // auto-engagement bookkeeping: when the target last changed, how long it's been out of reach, and
+    // targets given up on (until engine time)
+    public float lastSwitch = -100f;
+    public float outOfReach = 0f;
+    public final Map<ShipAPI, Float> ignoreUntil = new HashMap<ShipAPI, Float>();
+    // a Defensive ship flying back to its spot while still on HOLD, so it can fight on the way
+    public Vector2f returnTo;
+    public boolean evadeMove;
+    public final Vector2f evadePoint = new Vector2f();
 
     public UnitState(ShipAPI ship) {
         this.ship = ship;
@@ -165,6 +179,8 @@ public class UnitState {
         autoEngaged = false;
         engageTarget = null;
         idleAnchor = null;
+        returnTo = null;
+        evadeMove = false;
         vanillaAi = false;
         order = next.type;
         point.set(next.x, next.y);
@@ -182,6 +198,7 @@ public class UnitState {
     public void hold() {
         vanillaAi = false;
         cancelRetreat = true;
+        returnTo = null;
         queue.clear();
         clearCurrent();
     }

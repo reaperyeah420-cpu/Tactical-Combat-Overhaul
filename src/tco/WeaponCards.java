@@ -17,9 +17,12 @@ import com.fs.starfarer.api.combat.WeaponAPI.WeaponSize;
 import com.fs.starfarer.api.combat.WeaponAPI.WeaponType;
 import com.fs.starfarer.api.loading.WeaponSpecAPI;
 
+import tco.battle.BattlefieldCombatPlugin;
 import tco.ammo.AmmoRules;
+import tco.ammo.EnergyAmmo;
 import tco.armor.ArmorListener;
 import tco.missile.Guidance;
+import tco.patches.Patches;
 
 /**
  * Writes TCO's numbers (penetration, magazine, guidance, range, power) into every weapon's stat card.
@@ -28,7 +31,9 @@ import tco.missile.Guidance;
 public final class WeaponCards {
 
     private static final Map<String, String[]> originals = new HashMap<String, String[]>();
+    private static final Map<String, boolean[]> marked = new HashMap<String, boolean[]>();
     private static Map<String, Float> speeds;
+    private static final java.util.Set<String> diagnosed = new java.util.HashSet<String>();
     private static boolean warned;
 
     /** TCO's numbers for one weapon. Negative: not applicable. */
@@ -90,6 +95,8 @@ public final class WeaponCards {
             else if (type == WeaponType.ENERGY) n.damage *= ship.getEnergyWeaponDamageMult().getModifiedValue();
             else if (type == WeaponType.MISSILE) n.damage *= ship.getMissileWeaponDamageMult().getModifiedValue();
         }
+        boolean applied = ship != null && ship.getMissileWeaponDamageMult().getPercentMods().containsKey(BattlefieldCombatPlugin.MISSILE_DAMAGE_ID);
+        if (type == WeaponType.MISSILE && !applied) n.damage *= 1f + TcoSettings.missileDamageBonus / 100f;
         boolean ballisticShell = type == WeaponType.BALLISTIC && !spec.isBeam();
 
         // Penetration
@@ -106,20 +113,21 @@ public final class WeaponCards {
         }
 
         // Ammunition
-        if (TcoSettings.ammoEnabled && ballisticShell && stats != null && baseDamage > 0f) {
+        boolean energyAmmo = EnergyAmmo.isMarked(spec);
+        if (TcoSettings.ammoEnabled && (ballisticShell || energyAmmo) && stats != null && baseDamage > 0f) {
             float pd = AmmoRules.stockMult(isPd(spec), spec.getSize());
-            float rof = ship == null ? 1f : ship.getBallisticRoFMult().getModifiedValue();
+            float rof = ship == null ? 1f : (energyAmmo ? ship.getEnergyRoFMult() : ship.getBallisticRoFMult()).getModifiedValue();
             if (spec.usesAmmo() && spec.getAmmoPerSecond() > 0f) {
                 float perSecond = stats.getSustainedDps() > 0f ? stats.getSustainedDps() / baseDamage : spec.getAmmoPerSecond();
                 float shots = perSecond * TcoSettings.ammoSeconds * pd;
-                if (ship != null) shots = ship.getBallisticAmmoBonus().computeEffective(shots);
+                if (ship != null) shots = (energyAmmo ? ship.getEnergyAmmoBonus() : ship.getBallisticAmmoBonus()).computeEffective(shots);
                 n.rounds = Math.max(Math.max(TcoSettings.minAmmo, spec.getMaxAmmo() * 2), Math.round(shots));
                 n.reserve = true;
                 if (perSecond > 0f) n.seconds = n.rounds / (perSecond * rof);
             } else if (!spec.usesAmmo() && stats.getDps() > 0f) {
                 float perSecond = stats.getDps() / baseDamage;
                 float shots = perSecond * TcoSettings.ammoSeconds * pd;
-                if (ship != null) shots = ship.getBallisticAmmoBonus().computeEffective(shots);
+                if (ship != null) shots = (energyAmmo ? ship.getEnergyAmmoBonus() : ship.getBallisticAmmoBonus()).computeEffective(shots);
                 n.rounds = Math.max(TcoSettings.minAmmo, Math.round(shots));
                 n.seconds = n.rounds / (perSecond * rof);
             }
@@ -164,7 +172,14 @@ public final class WeaponCards {
         float flux = stats.getFluxPerDam() * stats.getDamagePerShot();
         float perSecondFlux = stats.getSustainedFluxPerSecond();
         float mult = 0f;
-        if (type == WeaponType.ENERGY) {
+        if (type == WeaponType.ENERGY && EnergyAmmo.isMarked(spec)) {
+            // On ammo: the cut flux (the game's cached stats still have the full amount), ballistic power share
+            mult = TcoSettings.powerBallisticMult * TcoSettings.energyAmmoFluxMult;
+            if (ship != null) {
+                flux = ship.getEnergyWeaponFluxCostMod().computeEffective(flux);
+                perSecondFlux = ship.getEnergyWeaponFluxCostMod().computeEffective(perSecondFlux);
+            }
+        } else if (type == WeaponType.ENERGY) {
             mult = TcoSettings.powerEnergyMult;
             if (ship != null) {
                 flux = ship.getEnergyWeaponFluxCostMod().computeEffective(flux);
@@ -196,14 +211,9 @@ public final class WeaponCards {
     }
 
     /** Typical armor class for this thickness. */
+    /** The class an armor value reliably pierces, from the loaded hulls (ArmorClasses). */
     public static String armorClass(float armor) {
-        if (armor >= 2000f) return "almost anything";
-        if (armor >= 1500f) return "heavy cruisers and capitals";
-        if (armor >= 1100f) return "cruisers";
-        if (armor >= 800f) return "light cruisers";
-        if (armor >= 450f) return "destroyers";
-        if (armor >= 200f) return "frigates";
-        return "only the lightest frigates";
+        return ArmorClasses.of(armor);
     }
 
     public static boolean changed(float now, float base) {
@@ -217,6 +227,35 @@ public final class WeaponCards {
         return text + " (" + (percent > 0 ? "+" : "") + percent + "%)";
     }
 
+    /** A ship-adjusted value: marked "(+N%)" in the text, or flagged for colouring when the card patch can. */
+    private static void add(List<String> values, List<Boolean> marks, float now, float base, boolean ship, String unit) {
+        boolean colour = ship && Patches.cardColours();
+        values.add(value(now, base, ship && !colour, unit));
+        marks.add(ship && changed(now, base) && base > 0f);
+    }
+
+    private static void add(List<String> values, List<Boolean> marks, String text) {
+        values.add(text);
+        marks.add(Boolean.FALSE);
+    }
+
+    /** Rewrites one weapon's card for this ship (null: base values). */
+    public static void applyFor(WeaponSpecAPI spec, MutableShipStatsAPI ship) {
+        try {
+            applyTo(spec, ship);
+        } catch (Throwable e) {
+            if (!warned) {
+                warned = true;
+                Global.getLogger(WeaponCards.class).warn("TCO: could not add TCO stats to weapon " + spec.getWeaponId(), e);
+            }
+        }
+    }
+
+    /** Per highlight of the weapon's current card: true for a ship-changed value. Null when none changed. */
+    public static boolean[] changedHighlights(String weaponId) {
+        return marked.get(weaponId);
+    }
+
     private static void applyTo(WeaponSpecAPI spec, MutableShipStatsAPI ship) {
         String id = spec.getWeaponId();
         String[] original = originals.get(id);
@@ -227,17 +266,28 @@ public final class WeaponCards {
         Numbers n = numbers(spec, ship);
         Numbers base = ship == null ? n : numbers(spec, null);
         boolean adjusted = ship != null;
+        // Diagnostic: what the ship card was built from, once per weapon per session
+        if (ship != null && n.penetration > 0f && diagnosed.add(id)) {
+            Global.getLogger(WeaponCards.class).info("TCO card " + id + ": ballistic shell speed x"
+                    + ship.getBallisticProjectileSpeedMult().getModifiedValue() + ", all shells x"
+                    + ship.getProjectileSpeedMult().getModifiedValue() + ", penetration " + Math.round(base.penetration)
+                    + " -> " + Math.round(n.penetration) + " (stats " + ship.getClass().getSimpleName() + ")");
+        }
         List<String> lines = new ArrayList<String>();
         List<String> values = new ArrayList<String>();
+        List<Boolean> marks = new ArrayList<Boolean>();
 
         if (n.penetration > 0f) {
             lines.add("Armor penetration %s: reliably pierces %s armor (%s), half the time %s."
                     + (n.kinetic ? "" : " High explosive strips armor rather than piercing it.")
                     + " Sloped armor counts as thicker.");
-            values.add(value(n.penetration, base.penetration, adjusted, ""));
-            values.add(value(n.reliable(), base.reliable(), adjusted, ""));
-            values.add(armorClass(n.reliable()));
-            values.add(value(n.penetration, base.penetration, adjusted, ""));
+            add(values, marks, n.penetration, base.penetration, adjusted, "");
+            add(values, marks, n.reliable(), base.reliable(), adjusted, "");
+            // The armor class it reliably pierces: marked like the numbers when the ship moves it up a class
+            String armorClass = armorClass(n.reliable());
+            values.add(armorClass);
+            marks.add(adjusted && !armorClass.equals(armorClass(base.reliable())));
+            add(values, marks, n.penetration, base.penetration, adjusted, "");
         }
         if (n.rounds > 0) {
             if (n.reserve) {
@@ -245,51 +295,71 @@ public final class WeaponCards {
             } else {
                 lines.add("Magazine %s rounds, %s of fire. Refilled by supply ships.");
             }
-            values.add(value(n.rounds, base.rounds, adjusted, ""));
-            values.add(value(n.seconds, base.seconds, adjusted, " s"));
+            add(values, marks, n.rounds, base.rounds, adjusted, "");
+            add(values, marks, n.seconds, base.seconds, adjusted, " s");
         }
         if (n.guidance != null) {
             lines.add("Guidance %s.");
-            values.add(n.guidance.label);
+            add(values, marks, n.guidance.label);
         }
         if (n.range > 0f) {
             lines.add("Range in battle %s.");
-            values.add(value(n.range, base.range, adjusted, ""));
+            add(values, marks, n.range, base.range, adjusted, "");
         }
         if (n.powerShot > 0f) {
             String onShip = n.shipPower > 0f ? " (this ship: %s power, %s/s regeneration)" : "";
             if (n.beam) {
                 lines.add("Power %s a second while firing" + onShip + ".");
-                values.add(pw(n.powerShot));
+                add(values, marks, pw(n.powerShot));
             } else if (n.powerPerSecond > 0f) {
                 lines.add("Power %s a shot, %s a second of sustained fire" + onShip + ".");
-                values.add(pw(n.powerShot));
-                values.add(pw(n.powerPerSecond));
+                add(values, marks, pw(n.powerShot));
+                add(values, marks, pw(n.powerPerSecond));
             } else {
                 lines.add("Power %s a shot" + onShip + ".");
-                values.add(pw(n.powerShot));
+                add(values, marks, pw(n.powerShot));
             }
             if (n.shipPower > 0f) {
-                values.add(String.valueOf(Math.round(n.shipPower)));
-                values.add(pw(n.shipRegen));
+                add(values, marks, String.valueOf(Math.round(n.shipPower)));
+                add(values, marks, pw(n.shipRegen));
             }
         }
 
         String text = original[0] == null ? "" : original[0];
         String highlights = original[1] == null ? "" : original[1];
+        int theirs = highlights.trim().isEmpty() ? 0 : highlights.split("\\|").length;
+        boolean[] flags = null;
         // With highlights the game String.formats the text, so escape a weapon's own bare %
         if (!lines.isEmpty() && highlights.trim().isEmpty()) text = text.replace("%", "%%");
         if (!lines.isEmpty()) {
             StringBuilder ours = new StringBuilder(adjusted ? "TCO, for this ship:" : "TCO:");
             for (String line : lines) ours.append("\n").append(line);
+            // Some mods write their numbers into the text and still list them as highlights, which would
+            // shift ours along if we left %s for the game to fill, so ours go in as text and only colour by match
+            StringBuilder filled = new StringBuilder();
             StringBuilder ourValues = new StringBuilder();
-            for (String v : values) {
+            List<Boolean> used = new ArrayList<Boolean>();
+            int from = 0;
+            for (int i = 0; i < values.size(); i++) {
+                int at = ours.indexOf("%s", from);
+                if (at < 0) break;
+                filled.append(ours, from, at).append(values.get(i));
+                from = at + 2;
                 if (ourValues.length() > 0) ourValues.append(" | ");
-                ourValues.append(v);
+                ourValues.append(values.get(i));
+                used.add(marks.get(i));
             }
-            text = text.trim().isEmpty() ? ours.toString() : text + "\n\n" + ours;
+            filled.append(ours.substring(from));
+            String block = filled.toString().replace("%", "%%");
+            text = text.trim().isEmpty() ? block : text + "\n\n" + block;
             highlights = highlights.trim().isEmpty() ? ourValues.toString() : highlights + " | " + ourValues;
+            if (used.contains(Boolean.TRUE)) {
+                flags = new boolean[theirs + used.size()];
+                for (int i = 0; i < used.size(); i++) flags[theirs + i] = used.get(i);
+            }
         }
+        if (flags == null) marked.remove(id);
+        else marked.put(id, flags);
         spec.setCustomAncillary(text.isEmpty() ? null : text);
         spec.setCustomAncillaryHL(highlights.isEmpty() ? null : highlights);
     }

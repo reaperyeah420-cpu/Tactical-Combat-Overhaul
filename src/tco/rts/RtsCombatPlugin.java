@@ -29,7 +29,11 @@ import com.fs.starfarer.api.combat.CombatTaskManagerAPI;
 import com.fs.starfarer.api.combat.CombatUIAPI;
 import com.fs.starfarer.api.combat.DeployedFleetMemberAPI;
 import com.fs.starfarer.api.combat.MutableStat;
+import com.fs.starfarer.api.characters.PersonAPI;
 import com.fs.starfarer.api.combat.ShipAIConfig;
+import com.fs.starfarer.api.combat.ShipwideAIFlags;
+import com.fs.starfarer.api.combat.ShipwideAIFlags.AIFlags;
+import com.fs.starfarer.api.impl.campaign.ids.Personalities;
 import com.fs.starfarer.api.combat.ShipAPI;
 import com.fs.starfarer.api.combat.ShipAPI.HullSize;
 import com.fs.starfarer.api.combat.ShipCommand;
@@ -42,7 +46,10 @@ import com.fs.starfarer.api.ui.LabelAPI;
 
 import tco.InputKeys;
 import tco.Keybinds;
+import tco.AiUtil;
+import tco.battle.DeathThroes;
 import tco.TcoSettings;
+import tco.Typing;
 import tco.ai.SupportRoles;
 import tco.ammo.AmmoCombatPlugin;
 import tco.ammo.AmmoRules;
@@ -50,9 +57,11 @@ import tco.boarding.BoardingCombatPlugin;
 import tco.fob.InertAI;
 import tco.fob.SupplyFob;
 import tco.hangar.HangarCombatPlugin;
+import tco.hullmods.CombatInformationCenter;
 import tco.hullmods.ExplosiveReactiveArmor;
 import tco.hullmods.SecurityForge;
 import tco.missile.IrCombatPlugin;
+import tco.patches.Patches;
 import tco.power.PowerCombatPlugin;
 import tco.radar.RadarCombatPlugin;
 import tco.repair.RepairCombatPlugin;
@@ -85,6 +94,24 @@ public class RtsCombatPlugin extends BaseEveryFrameCombatPlugin {
     public static boolean isVanillaMode(CombatEngineAPI engine) {
         RtsCombatPlugin rts = instance(engine);
         return rts == null || rts.mode == Mode.VANILLA;
+    }
+
+    /** The RTS overview (not piloting a ship, not normal controls). */
+    public static boolean isRtsView(CombatEngineAPI engine) {
+        RtsCombatPlugin rts = instance(engine);
+        return rts != null && rts.mode == Mode.RTS;
+    }
+
+    /** RTS mode is driving the camera (the missile camera leaves it to it). */
+    public static boolean holdsCamera(CombatEngineAPI engine) {
+        RtsCombatPlugin rts = instance(engine);
+        return rts != null && rts.cameraTaken;
+    }
+
+    /** The ships selected in RTS mode. */
+    public static List<ShipAPI> selectedShips(CombatEngineAPI engine) {
+        RtsCombatPlugin rts = instance(engine);
+        return rts == null ? new ArrayList<ShipAPI>() : new ArrayList<ShipAPI>(rts.selected);
     }
 
     /** Back to RTS mode when the piloted ship is lost; true if it was piloted. */
@@ -144,6 +171,10 @@ public class RtsCombatPlugin extends BaseEveryFrameCombatPlugin {
 
     private CombatEngineAPI engine;
     private Mode mode = Mode.RTS;
+    private static final float RTS_GATE_GRACE = 8f;
+    private float gateTimer;
+    private final CicPanel cicPanel = new CicPanel();
+    private final ThreatBoard threatBoard = new ThreatBoard();
 
     private final Map<ShipAPI, UnitState> units = new LinkedHashMap<ShipAPI, UnitState>();
     private final Set<ShipAPI> selected = new LinkedHashSet<ShipAPI>();
@@ -151,6 +182,8 @@ public class RtsCombatPlugin extends BaseEveryFrameCombatPlugin {
     private ShipAPI originalFlagship;
 
     private final Vector2f camCenter = new Vector2f();
+    // Where the camera was when the missile camera took over
+    private Vector2f beforeMissileCam;
     private float camZoom = 1f;
     private float camZoomTarget = 1f;
     private boolean cameraTaken = false;
@@ -174,6 +207,12 @@ public class RtsCombatPlugin extends BaseEveryFrameCombatPlugin {
 
     // invisible pod holding the engine's player-ship role in RTS mode
     private ShipAPI pod;
+    // The target the player picked with R for the ship in the player-ship role; the AI's own picks aren't shown
+    private ShipAPI pickedTarget;
+    private float assignmentCheck;
+    // Carriers told to engage (false) or regroup (true) in RTS mode
+    private final Map<ShipAPI, Boolean> fighterPullBack = new HashMap<ShipAPI, Boolean>();
+    private boolean targetKeyWasDown;
     private int podSpawns = 0;
 
     // helper with an empty weapon group, clears the engine's leftover weapon arcs
@@ -224,6 +263,7 @@ public class RtsCombatPlugin extends BaseEveryFrameCombatPlugin {
     public void init(CombatEngineAPI engine) {
         this.engine = engine;
         TcoSettings.load();
+        Patches.hideArcs = false;
         if (engine != null) engine.getCustomData().put(ENGINE_KEY, this);
         mode = TcoSettings.rtsDefault ? Mode.RTS : Mode.VANILLA;
         try {
@@ -254,7 +294,8 @@ public class RtsCombatPlugin extends BaseEveryFrameCombatPlugin {
     public void processInputPreCoreControls(float amount, List<InputEventAPI> events) {
         // Extra mouse buttons bypass the game's events
         List<Integer> mouseButtons = InputKeys.mousePresses();
-        if (!inBattle() || uiBusy()) return;
+        // Typing in the console: its keys are not ours
+        if (!inBattle() || uiBusy() || Typing.active()) return;
         boolean shift = Keyboard.isKeyDown(Keyboard.KEY_LSHIFT) || Keyboard.isKeyDown(Keyboard.KEY_RSHIFT);
         boolean ctrl = Keyboard.isKeyDown(Keyboard.KEY_LCONTROL) || Keyboard.isKeyDown(Keyboard.KEY_RCONTROL);
         for (int button : mouseButtons) {
@@ -348,12 +389,15 @@ public class RtsCombatPlugin extends BaseEveryFrameCombatPlugin {
         else if (key == TcoSettings.keyHoldFire) toggleHoldFire();
         else if (key == TcoSettings.keyBoard) boardKey(shift, ctrl);
         else if (key == TcoSettings.keyHangar) toggleHangarHold(selected, "Selected ships");
+        else if (key == TcoSettings.keyFighters) toggleFighters();
+        else if (key == TcoSettings.keyIgnore) ignoreUnderCursor();
         else if (key == TcoSettings.keyFlares) dropFlares(new ArrayList<ShipAPI>(selected));
         else if (key == TcoSettings.keyRadar) toggleRadar(new ArrayList<ShipAPI>(selected), "Selected ships");
         else if (key == TcoSettings.keyRadarHold) toggleMissileHold(new ArrayList<ShipAPI>(selected), "Selected ships");
         else if (key == TcoSettings.keyJammer) cycleJammers(new ArrayList<ShipAPI>(selected), "Selected ships");
         else if (key == TcoSettings.keyStance) cycleStance();
         else if (key == TcoSettings.keyFormation) cycleFormation();
+
         else if (isGroupKey(key)) {
             if (ctrl) saveControlGroup(key);
             else recallControlGroup(key, shift);
@@ -368,6 +412,33 @@ public class RtsCombatPlugin extends BaseEveryFrameCombatPlugin {
             int key = event.getEventValue();
             if (event.isKeyDownEvent() && !event.isRepeat()) rtsPress(key, event.isShiftDown(), event.isCtrlDown());
             if (isRtsKey(key)) event.consume();
+            return;
+        }
+
+        // The threat board: a click looks at that contact
+        if ((event.isLMBDownEvent() || event.isRMBDownEvent()) && threatBoard.contains(mouseX(), mouseY())) {
+            if (event.isLMBDownEvent()) {
+                ShipAPI contact = threatBoard.click(mouseX(), mouseY());
+                if (contact != null) camCenter.set(contact.getLocation());
+            }
+            event.consume();
+            return;
+        }
+        // Aiming a sector scan: the next click on the battlefield is the point
+        if (cicPanel.isAiming() && (event.isLMBDownEvent() || event.isRMBDownEvent()) && !cicPanel.contains(mouseX(), mouseY())) {
+            if (event.isLMBDownEvent()) {
+                ViewportAPI vp = engine.getViewport();
+                cicPanel.aimAt(engine, selected, new Vector2f(vp.convertScreenXToWorldX(mouseX()), vp.convertScreenYToWorldY(mouseY())));
+            } else {
+                cicPanel.cancelAiming();
+            }
+            event.consume();
+            return;
+        }
+        // The command ship panel takes clicks on it
+        if ((event.isLMBDownEvent() || event.isRMBDownEvent()) && cicPanel.contains(mouseX(), mouseY())) {
+            if (event.isLMBDownEvent()) cicPanel.click(engine, selected, mouseX(), mouseY());
+            event.consume();
             return;
         }
 
@@ -481,7 +552,7 @@ public class RtsCombatPlugin extends BaseEveryFrameCombatPlugin {
             boolean off = RadarCombatPlugin.isSilent(engine, ship);
             if (allOff == off) RadarCombatPlugin.toggleRadar(engine, ship);
         }
-        message(who + ": radar " + (allOff ? "on." : "off (emission control). Radar missiles need a datalink track."));
+        message(who + ": radar " + (allOff ? "on." : "off. Radar missiles now need a datalink track."));
     }
 
     private void dropFlares(List<ShipAPI> ships) {
@@ -501,7 +572,7 @@ public class RtsCombatPlugin extends BaseEveryFrameCombatPlugin {
                 || key == TcoSettings.keyDirectControl || key == TcoSettings.keyToggleShipAI
                 || key == TcoSettings.keyStop || key == TcoSettings.keyRetreat
                 || key == TcoSettings.keyHoldFire || key == TcoSettings.keyBoard
-                || key == TcoSettings.keyHangar || key == TcoSettings.keyFlares || key == TcoSettings.keyRadar || key == TcoSettings.keyRadarHold || key == TcoSettings.keyJammer || key == TcoSettings.keyStance
+                || key == TcoSettings.keyHangar || key == TcoSettings.keyFighters || key == TcoSettings.keyIgnore || key == TcoSettings.keyFlares || key == TcoSettings.keyRadar || key == TcoSettings.keyRadarHold || key == TcoSettings.keyJammer || key == TcoSettings.keyStance
                 || key == TcoSettings.keyFormation || isGroupKey(key);
     }
 
@@ -658,7 +729,24 @@ public class RtsCombatPlugin extends BaseEveryFrameCombatPlugin {
 
     // ------------------------------------------------------------------ mode changes
 
+    /** rtsNeedsCommandShip: RTS mode needs a CIC or Auxiliary CIC of yours in the battle (not checked while deploying). */
+    private boolean rtsAllowed() {
+        if (!TcoSettings.rtsNeedsCommandShip || engine.getTotalElapsedTime(false) < RTS_GATE_GRACE) return true;
+        for (ShipAPI ship : engine.getShips()) {
+            if (ship.getOwner() == 0 && !ship.isAlly() && ship.isAlive() && !ship.isHulk() && !ship.isRetreating()
+                    && CombatInformationCenter.level(ship) > 0) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private void setMode(Mode newMode) {
+        if (newMode == Mode.RTS && !rtsAllowed()) {
+            message("RTS mode needs a CIC or Auxiliary CIC in the battle.");
+            if (mode == Mode.RTS) return;
+            newMode = Mode.VANILLA;
+        }
         if (newMode == mode) return;
         Mode old = mode;
         mode = newMode;
@@ -684,8 +772,8 @@ public class RtsCombatPlugin extends BaseEveryFrameCombatPlugin {
             camValid = false;
             message("Normal controls. " + InputKeys.name(TcoSettings.keyToggleMode) + " or "
                     + InputKeys.name(TcoSettings.keyDirectControl) + " for RTS mode.");
-            if (engine.isUIAutopilotOn()) {
-                message("Autopilot is on, so the ship flies itself. Press any movement key or the autopilot button to take the helm.");
+            if (AiUtil.autopilotOn(engine)) {
+                message("Autopilot is on. Press a movement key to take the helm.");
             }
         } else if (newMode == Mode.RTS) {
             // Re-issue a retreat the piloted ship was carrying out
@@ -724,6 +812,15 @@ public class RtsCombatPlugin extends BaseEveryFrameCombatPlugin {
      */
     private void usePod(float realDt) {
         if (!TcoSettings.commandPod) return;
+        if (Patches.arcs()) {
+            // The arc patch keeps arcs off, so the flagship keeps the player-ship role
+            ShipAPI player = engine.getPlayerShip();
+            if ((pod != null && player == pod) || (arcSink != null && player == arcSink)) {
+                ShipAPI flagship = pickFlagship();
+                if (flagship != null) engine.setPlayerShipExternal(flagship);
+            }
+            return;
+        }
         if (pod != null && (pod.isHulk() || !pod.isAlive() || !engine.isEntityInPlay(pod))) pod = null;
         if (arcSink != null && (arcSink.isHulk() || !arcSink.isAlive() || !engine.isEntityInPlay(arcSink))) {
             arcSink = null;
@@ -827,8 +924,8 @@ public class RtsCombatPlugin extends BaseEveryFrameCombatPlugin {
     private float parkingSign = 0f;
 
     private void releaseToVanilla(UnitState unit, boolean playerFlown) {
-        if (unit.aiInstalled) {
-            unit.ship.resetDefaultAI();
+        if (unit.aiInstalled || (unit.manualVanillaAi != null && AiUtil.isOurs(unit.ship, unit.manualHandle))) {
+            AiUtil.resetDefault(unit.ship);
             unit.aiInstalled = false;
         }
         unit.manualVanillaAi = null;
@@ -856,20 +953,27 @@ public class RtsCombatPlugin extends BaseEveryFrameCombatPlugin {
 
     private void toggleAiForSelection() {
         if (selected.isEmpty()) return;
+        // On unless every selected ship already has it (an attack order counts as off: the ship shows red, not
+        // orange, so T turning it "off" read as T doing nothing)
         boolean anyPassive = false;
+        int count = 0;
         for (ShipAPI ship : selected) {
             UnitState unit = units.get(ship);
-            if (unit != null && !unit.vanillaAi && !unit.isEngaging()) anyPassive = true;
+            if (unit == null) continue;
+            count++;
+            if (!unit.vanillaAi) anyPassive = true;
         }
+        if (count == 0) return;
         for (ShipAPI ship : selected) {
             UnitState unit = units.get(ship);
             if (unit == null) continue;
             // Drop the old order so it can't resume
             unit.hold();
             unit.vanillaAi = anyPassive;
-            if (!anyPassive) unit.manualVanillaAi = null;
+            unit.manualVanillaAi = null;
         }
-        message(anyPassive ? "Ship AI on for selected ships." : "Ship AI off for selected ships.");
+        String which = count == 1 ? selected.iterator().next().getName() : count + " selected ships";
+        message(anyPassive ? "Ship AI on for " + which + "." : "Ship AI off for " + which + ".");
     }
 
     private void stopSelection() {
@@ -929,6 +1033,55 @@ public class RtsCombatPlugin extends BaseEveryFrameCombatPlugin {
             Vector2f loc = ship.getLocation();
             if (loc.x >= x1 && loc.x <= x2 && loc.y >= y1 && loc.y <= y2) selected.add(ship);
         }
+    }
+
+    /**
+     * In RTS mode the flagship keeps the player-ship role (with the arc patch), and the game draws a reticle on its
+     * target, which its AI and attack orders keep setting. Only what the player picked shows: the enemy under the
+     * cursor when R is pressed (nothing there clears it), else the radar lock.
+     */
+    private void keepPickedTarget(boolean readKey) {
+        if (!TcoSettings.rtsHideAiTarget) return;
+        ShipAPI player = engine.getPlayerShip();
+        // The command pod has no AI picking for it
+        if (player == null || !units.containsKey(player)) return;
+        if (readKey) {
+            boolean down = Keyboard.isKeyDown(Keyboard.KEY_R) && !Typing.active();
+            if (down && !targetKeyWasDown) {
+                ViewportAPI viewport = engine.getViewport();
+                ShipAPI under = shipAt(viewport.convertScreenXToWorldX(mouseX()), viewport.convertScreenYToWorldY(mouseY()), false);
+                pickedTarget = under != null && under.getOwner() != player.getOwner() ? under : null;
+            }
+            targetKeyWasDown = down;
+        }
+        if (pickedTarget != null && (!pickedTarget.isAlive() || pickedTarget.isHulk() || !engine.isEntityInPlay(pickedTarget))) {
+            pickedTarget = null;
+        }
+        ShipAPI want = pickedTarget != null ? pickedTarget : RadarCombatPlugin.radarLockOf(engine, player);
+        if (player.getShipTarget() == want) return;
+        try {
+            player.setShipTarget(want);
+        } catch (RuntimeException e) {
+        }
+    }
+
+    /** A faint outline where the map ends. */
+    private void renderMapEdge() {
+        float w = engine.getMapWidth() / 2f;
+        float h = engine.getMapHeight() / 2f;
+        GL11.glPushAttrib(GL11.GL_ALL_ATTRIB_BITS);
+        GL11.glDisable(GL11.GL_TEXTURE_2D);
+        GL11.glEnable(GL11.GL_BLEND);
+        GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
+        GL11.glLineWidth(2f);
+        GL11.glColor4f(0.75f, 0.85f, 1f, 0.25f);
+        GL11.glBegin(GL11.GL_LINE_LOOP);
+        GL11.glVertex2f(-w, -h);
+        GL11.glVertex2f(w, -h);
+        GL11.glVertex2f(w, h);
+        GL11.glVertex2f(-w, h);
+        GL11.glEnd();
+        GL11.glPopAttrib();
     }
 
     private ShipAPI shipAt(float x, float y, boolean ownOnly) {
@@ -1078,6 +1231,14 @@ public class RtsCombatPlugin extends BaseEveryFrameCombatPlugin {
                 || engine.getPlayerShip() != directShip)) {
             setMode(Mode.RTS);
         }
+        // The command ship is gone: no more RTS mode
+        if (mode == Mode.RTS && TcoSettings.rtsNeedsCommandShip && (gateTimer -= realDt) <= 0f) {
+            gateTimer = 1f;
+            if (!rtsAllowed()) {
+                message("Your command ship is gone: RTS mode needs a CIC or Auxiliary CIC.");
+                setMode(Mode.VANILLA);
+            }
+        }
 
         if (mode == Mode.RTS && !uiBusy()) {
             updateCamera(realDt);
@@ -1090,6 +1251,16 @@ public class RtsCombatPlugin extends BaseEveryFrameCombatPlugin {
 
         if (mode != Mode.VANILLA && !engine.isCombatOver()) controlUnits(amount);
         boolean over = engine.isCombatOver();
+        if (mode == Mode.RTS && !over) keepPickedTarget(true);
+        if (mode != Mode.VANILLA && !over) {
+            keepFighterModes();
+            if ((assignmentCheck -= amount) <= 0f) {
+                assignmentCheck = 0.5f;
+                keepAssignments();
+            }
+        }
+        else pickedTarget = null;
+        Patches.hideArcs = mode == Mode.RTS && !over;
         FogOfWar.update(engine, (mode == Mode.RTS || TcoSettings.fogHideWhenPiloting) && !over, mode == Mode.RTS && !over,
                 amount, arcSink);
     }
@@ -1133,6 +1304,8 @@ public class RtsCombatPlugin extends BaseEveryFrameCombatPlugin {
             boolean isPlayerShip = ship == player;
 
             if (mode == Mode.DIRECT && isPlayerShip) continue;
+            // Death throes: the ship is inert, no orders or AI of ours
+            if (DeathThroes.isDying(ship)) continue;
 
             // Clear leftover assignments
             if (unit.pendingClear && !unit.isEngaging() && !unit.isEscortingByAi() && !unit.autoEngaged) {
@@ -1160,13 +1333,24 @@ public class RtsCombatPlugin extends BaseEveryFrameCombatPlugin {
             }
 
             if (unit.isAiFlown() || ship.isRetreating()) {
+                String personality = ship.isRetreating() ? null : stancePersonality(unit);
+                boolean changed = personality == null ? unit.vanillaPersonality != null : !personality.equals(unit.vanillaPersonality);
+                if (changed) {
+                    unit.vanillaPersonality = personality;
+                    // The player ship's copy is rebuilt with the new personality
+                    unit.manualVanillaAi = null;
+                }
                 if (unit.aiInstalled) {
-                    ship.resetDefaultAI();
+                    if (!isPlayerShip) installDefaultAi(ship, personality);
                     unit.aiInstalled = false;
                     unit.savedAutofire = null;
-                } else if (isPlayerShip && ship.getShipAI() == null) {
-                    tickManualVanillaAi(unit, amount);
+                } else if (changed && !isPlayerShip) {
+                    installDefaultAi(ship, personality);
                 }
+                // The engine only runs the player ship's AI on autopilot (the flagship keeps that role after
+                // piloting, and always with the arc patch), so it gets a counted copy we run when it doesn't
+                if (isPlayerShip) flyPlayerShip(unit, amount);
+                else unit.manualVanillaAi = null;
                 if (unit.isEngaging() && !unit.attackAssigned) assignAttack(unit);
                 if (unit.isEscortingByAi() && !unit.escortAssigned) assignEscort(unit);
                 if (unit.order == OrderType.RETREAT && !unit.retreatAssigned) assignRetreat(unit);
@@ -1174,6 +1358,7 @@ public class RtsCombatPlugin extends BaseEveryFrameCombatPlugin {
             }
 
             unit.manualVanillaAi = null;
+            unit.vanillaPersonality = null;
             if (unit.attackAssigned || unit.escortAssigned) {
                 clearAttackAssignment(unit);
                 unit.escortAssigned = false;
@@ -1185,7 +1370,8 @@ public class RtsCombatPlugin extends BaseEveryFrameCombatPlugin {
                 continue;
             }
             if (!unit.aiInstalled) {
-                ship.setShipAI(unit.ai);
+                // Ticks are counted, not handles: AGC's ship modes may wrap it
+                AiUtil.install(ship, unit.ai);
                 unit.aiInstalled = true;
                 unit.stallTime = 0f;
             } else if (unit.ai.engineTicks == unit.lastSeenEngineTicks && amount > 0f) {
@@ -1239,7 +1425,11 @@ public class RtsCombatPlugin extends BaseEveryFrameCombatPlugin {
      */
     private void updateBehaviour(UnitState unit) {
         ShipAPI ship = unit.ship;
-        if (ship.isRetreating() || unit.order == OrderType.RETREAT || unit.vanillaAi) return;
+        if (ship.isRetreating() || unit.order == OrderType.RETREAT) return;
+        if (unit.vanillaAi) {
+            steerShipAi(unit);
+            return;
+        }
         if (unit.order == OrderType.HOLD && unit.idleAnchor == null && !unit.autoEngaged) {
             unit.idleAnchor = new Vector2f(ship.getLocation());
         }
@@ -1251,7 +1441,13 @@ public class RtsCombatPlugin extends BaseEveryFrameCombatPlugin {
         }
         if (unit.stance == Stance.EVASIVE && unit.order != OrderType.ATTACK_MOVE) {
             if (unit.autoEngaged) endEngagement(unit);
-            if (unit.order == OrderType.HOLD) evade(unit);
+            if (unit.order == OrderType.HOLD) {
+                evade(unit);
+            } else if (unit.order == OrderType.MOVE && unit.evadeMove && RtsMath.distance(unit.point, unit.evadePoint) < 1f) {
+                // Still running: re-aim if the danger moved (a new threat ahead)
+                Vector2f away = evadePoint(unit);
+                if (away != null && RtsMath.distance(away, unit.point) > 400f) evade(unit);
+            }
             return;
         }
         if (unit.autoEngaged) {
@@ -1285,15 +1481,100 @@ public class RtsCombatPlugin extends BaseEveryFrameCombatPlugin {
                 return;
         }
         if (centre == null) return;
-        ShipAPI enemy = nearestEnemy(ship, centre, radius);
+        ShipAPI enemy = bestEnemy(unit, centre, radius);
+        // Flying home: also answer whatever is shooting at us, leashed to where we are
+        boolean onTheWay = false;
+        if (enemy == null && unit.returnTo != null) {
+            enemy = bestEnemy(unit, ship.getLocation(), reach);
+            onTheWay = enemy != null;
+        }
         if (enemy == null) return;
-        unit.autoEngaged = true;
-        unit.engageTarget = enemy;
-        unit.engageAnchor.set(unit.order == OrderType.HOLD && unit.idleAnchor != null ? unit.idleAnchor : ship.getLocation());
-        assignIntercept(unit, enemy);
+        unit.engageAnchor.set(!onTheWay && unit.order == OrderType.HOLD && unit.idleAnchor != null
+                ? unit.idleAnchor : ship.getLocation());
+        engage(unit, enemy);
     }
 
     private boolean evade(UnitState unit) {
+        Vector2f away = evadePoint(unit);
+        if (away == null) return false;
+        unit.give(Order.move(away.x, away.y), false);
+        unit.idleAnchor = null;
+        unit.evadeMove = true;
+        unit.evadePoint.set(unit.point);
+        return true;
+    }
+
+    /**
+     * The personality the stance gives the game's AI (T), or null to leave the ship's own. Ships with an
+     * officer or AI core keep their captain's personality.
+     */
+    private static String stancePersonality(UnitState unit) {
+        if (!unit.vanillaAi || !TcoSettings.stancesSteerShipAi) return null;
+        PersonAPI captain = unit.ship.getCaptain();
+        if (captain != null && !captain.isDefault()) return null;
+        switch (unit.stance) {
+            case AGGRESSIVE:
+                return Personalities.AGGRESSIVE;
+            case HOLD:
+                return Personalities.CAUTIOUS;
+            case EVASIVE:
+            case RESCUE:
+                return Personalities.TIMID;
+            default:
+                return Personalities.STEADY;
+        }
+    }
+
+    private static void installDefaultAi(ShipAPI ship, String personality) {
+        if (personality == null) {
+            AiUtil.resetDefault(ship);
+            return;
+        }
+        try {
+            ShipAIConfig config = new ShipAIConfig();
+            config.personalityOverride = personality;
+            ship.setShipAI(Global.getSettings().createDefaultShipAI(ship, config));
+            AiUtil.gameAiInstalled(ship);
+        } catch (RuntimeException e) {
+            Global.getLogger(RtsCombatPlugin.class).warn("TCO: could not give the ship AI a stance personality", e);
+            AiUtil.resetDefault(ship);
+        }
+    }
+
+    /**
+     * Twice a second, for a ship on the game's AI with a stance personality: Hold ground and Evasive/Rescue
+     * never chase, Defensive stops chasing once well away from where it was handed over, and Evasive/Rescue
+     * back off from anything that can reach them.
+     */
+    private void steerShipAi(UnitState unit) {
+        if (stancePersonality(unit) == null) return;
+        ShipAPI ship = unit.ship;
+        ShipwideAIFlags flags = ship.getAIFlags();
+        if (flags == null) return;
+        if (unit.idleAnchor == null) unit.idleAnchor = new Vector2f(ship.getLocation());
+        // Until the next check, with a little overlap
+        float until = 0.7f;
+        switch (unit.stance) {
+            case HOLD:
+                flags.setFlag(AIFlags.DO_NOT_PURSUE, until);
+                break;
+            case DEFENSIVE:
+                if (RtsMath.distance(ship.getLocation(), unit.idleAnchor) > TcoSettings.defensiveLeash) {
+                    flags.setFlag(AIFlags.DO_NOT_PURSUE, until);
+                }
+                break;
+            case EVASIVE:
+            case RESCUE:
+                flags.setFlag(AIFlags.DO_NOT_PURSUE, until);
+                if (evadePoint(unit) != null) flags.setFlag(AIFlags.BACK_OFF, until);
+                break;
+            default:
+                break;
+        }
+    }
+
+    /** Where to run to get out of every enemy's reach, or null if already clear. */
+    private Vector2f evadePoint(UnitState unit) {
         ShipAPI ship = unit.ship;
         float awayX = 0f, awayY = 0f, worst = 0f;
         for (ShipAPI other : engine.getShips()) {
@@ -1315,7 +1596,7 @@ public class RtsCombatPlugin extends BaseEveryFrameCombatPlugin {
             awayY += dy / d * inside;
             worst = Math.max(worst, inside);
         }
-        if (worst <= 0f) return false;
+        if (worst <= 0f) return null;
         float len = (float) Math.sqrt(awayX * awayX + awayY * awayY);
         if (len < 1f) {
             awayX = 0f;
@@ -1331,9 +1612,7 @@ public class RtsCombatPlugin extends BaseEveryFrameCombatPlugin {
             x = Math.max(-halfW, Math.min(halfW, ship.getLocation().x - awayY / len * go));
             y = Math.max(-halfH, Math.min(halfH, ship.getLocation().y + awayX / len * go));
         }
-        unit.give(Order.move(x, y), false);
-        unit.idleAnchor = null;
-        return true;
+        return new Vector2f(x, y);
     }
 
     private void rescue(UnitState unit, boolean onOwnMove) {
@@ -1402,6 +1681,18 @@ public class RtsCombatPlugin extends BaseEveryFrameCombatPlugin {
         return TcoSettings.defensiveLeash;
     }
 
+    private static final float ENGAGE_TICK = 0.5f;
+    private static final float SWITCH_COOLDOWN = 3f;
+    private static final float IGNORE_SECONDS = 20f;
+
+    private float now() {
+        return engine.getTotalElapsedTime(false);
+    }
+
+    /**
+     * Twice a second during an auto-engagement: leash, give-up timer, and a switch to a clearly better target
+     * (one shooting at us, a crippled one, one nobody else is on).
+     */
     private void checkEngagement(UnitState unit) {
         ShipAPI ship = unit.ship;
         Vector2f centre = leashCentre(unit);
@@ -1412,30 +1703,145 @@ public class RtsCombatPlugin extends BaseEveryFrameCombatPlugin {
         }
         ShipAPI target = unit.engageTarget;
         boolean gone = target == null || !target.isAlive() || target.isHulk() || !engine.isEntityInPlay(target)
-                || target.getOwner() == ship.getOwner();
+                || target.getOwner() == ship.getOwner() || !candidate(unit, target);
         boolean strayed = !gone && centre != null
                 && RtsMath.distance(target.getLocation(), centre) > leash + weaponReach(ship);
-        if (!gone && !strayed) return;
-        float radius = unit.order == OrderType.HOLD && unit.stance == Stance.AGGRESSIVE
-                ? TcoSettings.aggressiveSightRange : weaponReach(ship) + 400f;
-        ShipAPI next = nearestEnemy(ship, centre != null ? centre : ship.getLocation(), radius);
-        if (next != null) {
-            unit.engageTarget = next;
-            assignIntercept(unit, next);
+
+        // Give up on a target that stays out of reach (a faster ship, one kiting us)
+        if (!gone && !strayed) {
+            float gap = RtsMath.distance(ship.getLocation(), target.getLocation())
+                    - ship.getCollisionRadius() - target.getCollisionRadius();
+            unit.outOfReach = gap > weaponReach(ship) ? unit.outOfReach + ENGAGE_TICK : 0f;
+            if (unit.outOfReach > TcoSettings.engageGiveUpSeconds) {
+                unit.ignoreUntil.put(target, now() + IGNORE_SECONDS);
+                gone = true;
+            }
+        }
+
+        float radius = engageRadius(unit);
+        Vector2f from = centre != null ? centre : ship.getLocation();
+        ShipAPI best = bestEnemy(unit, from, radius);
+        if (!gone && !strayed) {
+            if (best == null || best == target || now() - unit.lastSwitch < SWITCH_COOLDOWN) return;
+            if (score(unit, best, from, radius) < score(unit, target, from, radius) + TcoSettings.engageSwitchMargin) return;
+        }
+        if (best != null) {
+            engage(unit, best);
         } else {
             endEngagement(unit);
         }
     }
 
+    private float engageRadius(UnitState unit) {
+        return unit.order == OrderType.HOLD && unit.stance == Stance.AGGRESSIVE
+                ? TcoSettings.aggressiveSightRange : weaponReach(unit.ship) + 400f;
+    }
+
+    private void engage(UnitState unit, ShipAPI enemy) {
+        unit.autoEngaged = true;
+        unit.engageTarget = enemy;
+        unit.lastSwitch = now();
+        unit.outOfReach = 0f;
+        unit.returnTo = null;
+        assignIntercept(unit, enemy);
+    }
+
     private void endEngagement(UnitState unit) {
         unit.autoEngaged = false;
         unit.engageTarget = null;
+        unit.outOfReach = 0f;
         clearAttackAssignment(unit);
+        // Defensive ships fly home on their HOLD, so they still fight anything on the way
         if (unit.order == OrderType.HOLD && unit.stance == Stance.DEFENSIVE && unit.idleAnchor != null
                 && RtsMath.distance(unit.ship.getLocation(), unit.idleAnchor) > 200f) {
-            Vector2f home = new Vector2f(unit.idleAnchor);
-            unit.give(Order.move(home.x, home.y), false);
+            unit.returnTo = new Vector2f(unit.idleAnchor);
         }
+    }
+
+    /** An enemy auto-engagement may pick: seen, not phased, not given up on, not fleeing unless it shoots us. */
+    private boolean candidate(UnitState unit, ShipAPI other) {
+        ShipAPI ship = unit.ship;
+        if (other.getOwner() == ship.getOwner() || (other.getOwner() != 0 && other.getOwner() != 1)) return false;
+        if (!other.isAlive() || other.isHulk() || other.isFighter() || other.isDrone() || other.isShuttlePod()) return false;
+        if (AmmoRules.isShuttle(other) || other.getCustomData().containsKey(BoardingCombatPlugin.CAPTURED_KEY)) return false;
+        if (other.getCustomData().containsKey(EscapePodPlugin.POD_KEY) || other.isStationModule()) return false;
+        if (other.isPhased() || FogOfWar.isHidden(other)) return false;
+        Float until = unit.ignoreUntil.get(other);
+        if (until != null) {
+            if (until > now()) return false;
+            unit.ignoreUntil.remove(other);
+        }
+        if (other.isRetreating() && !threatens(other, ship)) return false;
+        return true;
+    }
+
+    /** The other ship has us inside its gun reach. */
+    private boolean threatens(ShipAPI other, ShipAPI ship) {
+        float gap = RtsMath.distance(other.getLocation(), ship.getLocation())
+                - other.getCollisionRadius() - ship.getCollisionRadius();
+        return gap <= weaponReach(other);
+    }
+
+    private static int sizeOf(ShipAPI ship) {
+        switch (ship.getHullSize()) {
+            case FRIGATE: return 1;
+            case DESTROYER: return 2;
+            case CRUISER: return 3;
+            case CAPITAL_SHIP: return 4;
+            default: return 0;
+        }
+    }
+
+    /** Has any weapon that is more than point defence. */
+    private static boolean canHurtShips(ShipAPI ship) {
+        for (WeaponAPI weapon : ship.getAllWeapons()) {
+            if (weapon.isDecorative() || weapon.hasAIHint(WeaponAPI.AIHints.PD_ONLY)) continue;
+            if (weapon.getType() == WeaponAPI.WeaponType.MISSILE && weapon.usesAmmo() && weapon.getAmmo() <= 0) continue;
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * How much an enemy is worth engaging (higher is better): near, shooting at us, crippled or overloaded,
+     * not far bigger than us, not already mobbed by our ships, not running away.
+     */
+    private float score(UnitState unit, ShipAPI target, Vector2f centre, float radius) {
+        ShipAPI ship = unit.ship;
+        float d = Math.max(0f, RtsMath.distance(centre, target.getLocation()) - target.getCollisionRadius());
+        float s = 3f * (1f - Math.min(1f, d / Math.max(radius, 1f)));
+        if (threatens(target, ship)) s += 2f;
+        s += 1.5f * (1f - target.getHullLevel());
+        if (target.getFluxTracker().isOverloadedOrVenting()) s += 2f;
+        else s += target.getFluxLevel();
+        int bigger = sizeOf(target) - sizeOf(ship);
+        if (bigger > 1) s -= 1.5f * (bigger - 1);
+        int others = 0;
+        for (UnitState friend : units.values()) {
+            if (friend == unit) continue;
+            if (friend.engageTarget == target || (friend.isEngaging() && friend.target == target)) others++;
+        }
+        if (others > 1) s -= 0.75f * (others - 1);
+        if (target.isRetreating()) s -= 3f;
+        return s;
+    }
+
+    /** The best-scoring enemy within the radius of the centre, or null. */
+    private ShipAPI bestEnemy(UnitState unit, Vector2f centre, float radius) {
+        if (!canHurtShips(unit.ship)) return null;
+        ShipAPI best = null;
+        float bestScore = -Float.MAX_VALUE;
+        for (ShipAPI other : engine.getShips()) {
+            if (!candidate(unit, other)) continue;
+            float dist = RtsMath.distance(centre, other.getLocation()) - other.getCollisionRadius();
+            if (dist > radius) continue;
+            float s = score(unit, other, centre, radius);
+            if (s > bestScore) {
+                bestScore = s;
+                best = other;
+            }
+        }
+        return best;
     }
 
     private float weaponReach(ShipAPI ship) {
@@ -1560,10 +1966,10 @@ public class RtsCombatPlugin extends BaseEveryFrameCombatPlugin {
     private static String stanceTip(Stance stance) {
         switch (stance) {
             case AGGRESSIVE: return "Chases any enemy it can see.";
-            case DEFENSIVE: return "Fights enemies near its spot, then goes back.";
+            case DEFENSIVE: return "Fights near its post, then goes back to it.";
             case HOLD: return "Never moves on its own; only shoots.";
             case EVASIVE: return "Keeps out of enemy guns' reach.";
-            default: return "Picks up your escape pods, away from enemy guns.";
+            default: return "Picks up escape pods, staying out of enemy range.";
         }
     }
 
@@ -1697,6 +2103,56 @@ public class RtsCombatPlugin extends BaseEveryFrameCombatPlugin {
         }
     }
 
+    /**
+     * Escort and attack orders are the game's own assignments, and the game fills an escort with suitable ships by
+     * itself: a new escort took ships off the ones they were ordered to guard. Twice a second, a ship whose
+     * assignment no longer matches its order is given it again, and ships the game put on one of these assignments
+     * by itself are taken off (unless handed to the ship AI with T).
+     */
+    private void keepAssignments() {
+        CombatFleetManagerAPI fleet = engine.getFleetManager(0);
+        CombatTaskManagerAPI tasks = fleet == null ? null : fleet.getTaskManager(false);
+        if (tasks == null) return;
+        // Target ship -> the ships ordered onto it
+        Map<ShipAPI, Set<ShipAPI>> wanted = new HashMap<ShipAPI, Set<ShipAPI>>();
+        for (UnitState unit : units.values()) {
+            boolean escort = unit.isEscortingByAi() && unit.escortAssigned;
+            boolean attack = unit.isEngaging() && unit.attackAssigned;
+            if ((!escort && !attack) || unit.target == null) continue;
+            Set<ShipAPI> ships = wanted.get(unit.target);
+            if (ships == null) {
+                ships = new LinkedHashSet<ShipAPI>();
+                wanted.put(unit.target, ships);
+            }
+            ships.add(unit.ship);
+            if (assignedTo(tasks.getAssignmentFor(unit.ship)) == unit.target) continue;
+            // Given again on the next frame
+            if (escort) unit.escortAssigned = false;
+            else unit.attackAssigned = false;
+        }
+        if (wanted.isEmpty()) return;
+        try {
+            for (AssignmentInfo info : new ArrayList<AssignmentInfo>(tasks.getAllAssignments())) {
+                Set<ShipAPI> ordered = wanted.get(assignedTo(info));
+                if (ordered == null) continue;
+                for (DeployedFleetMemberAPI member : new ArrayList<DeployedFleetMemberAPI>(info.getAssignedMembers())) {
+                    ShipAPI ship = member.getShip();
+                    if (ship == null || ordered.contains(ship)) continue;
+                    UnitState unit = units.get(ship);
+                    if (unit == null || unit.vanillaAi) continue;
+                    tasks.orderSearchAndDestroy(member, false);
+                }
+            }
+        } catch (RuntimeException e) {
+            Global.getLogger(RtsCombatPlugin.class).warn("TCO: could not check escort and attack assignments", e);
+        }
+    }
+
+    private static ShipAPI assignedTo(AssignmentInfo info) {
+        if (info == null || !(info.getTarget() instanceof DeployedFleetMemberAPI)) return null;
+        return ((DeployedFleetMemberAPI) info.getTarget()).getShip();
+    }
+
     private void cancelRetreat(UnitState unit) {
         try {
             CombatFleetManagerAPI fleet = engine.getFleetManager(unit.ship.getOwner());
@@ -1738,16 +2194,28 @@ public class RtsCombatPlugin extends BaseEveryFrameCombatPlugin {
         }
     }
 
-    private void tickManualVanillaAi(UnitState unit, float amount) {
-        if (amount <= 0f) return;
+    private void flyPlayerShip(UnitState unit, float amount) {
+        ShipAPI ship = unit.ship;
         try {
-            if (unit.manualVanillaAi == null) {
-                unit.manualVanillaAi = Global.getSettings().createDefaultShipAI(unit.ship, new ShipAIConfig());
+            if (unit.manualVanillaAi == null || !AiUtil.isOurs(ship, unit.manualHandle)) {
+                if (unit.manualVanillaAi == null) {
+                    ShipAIConfig config = new ShipAIConfig();
+                    config.personalityOverride = unit.vanillaPersonality;
+                    unit.manualVanillaAi = Global.getSettings().createDefaultShipAI(ship, config);
+                }
+                unit.manualHandle = AiUtil.install(ship, unit.manualVanillaAi);
             }
-            unit.manualVanillaAi.advance(amount);
+            // The engine only runs the player ship's AI on autopilot; otherwise we do. (Not through a wrapper: the
+            // game's ship AI refuses to run unless it is the ship's own AI.)
+            if (amount > 0f && !AiUtil.autopilotOn(engine)) {
+                // Under AGC's wrapper the game's AI only runs through it (it swaps itself out around the call)
+                if (AiUtil.isWrapped(unit.manualHandle)) ship.getShipAI().advance(amount);
+                else unit.manualVanillaAi.advance(amount);
+            }
         } catch (RuntimeException e) {
             Global.getLogger(RtsCombatPlugin.class).warn("TCO: could not run the default AI on the flagship", e);
             unit.manualVanillaAi = null;
+            if (unit.vanillaAi) message("Ship AI could not take " + ship.getName() + " (see starsector.log); TCO keeps flying it.");
             unit.vanillaAi = false;
         }
     }
@@ -1768,12 +2236,22 @@ public class RtsCombatPlugin extends BaseEveryFrameCombatPlugin {
             viewport.setExternalControl(true);
         }
 
+        Vector2f missileView = MissileCam.view(engine);
+        if (missileView != null) {
+            if (beforeMissileCam == null) beforeMissileCam = new Vector2f(camCenter);
+            camCenter.set(missileView);
+        } else if (beforeMissileCam != null) {
+            camCenter.set(beforeMissileCam);
+            beforeMissileCam = null;
+        }
+
         float dx = 0f;
         float dy = 0f;
-        if (Keyboard.isKeyDown(Keyboard.KEY_W) || Keyboard.isKeyDown(Keyboard.KEY_UP)) dy += 1f;
-        if (Keyboard.isKeyDown(Keyboard.KEY_S) || Keyboard.isKeyDown(Keyboard.KEY_DOWN)) dy -= 1f;
-        if (Keyboard.isKeyDown(Keyboard.KEY_D) || Keyboard.isKeyDown(Keyboard.KEY_RIGHT)) dx += 1f;
-        if (Keyboard.isKeyDown(Keyboard.KEY_A) || Keyboard.isKeyDown(Keyboard.KEY_LEFT)) dx -= 1f;
+        boolean keys = !Typing.active() && missileView == null;
+        if (keys && (Keyboard.isKeyDown(Keyboard.KEY_W) || Keyboard.isKeyDown(Keyboard.KEY_UP))) dy += 1f;
+        if (keys && (Keyboard.isKeyDown(Keyboard.KEY_S) || Keyboard.isKeyDown(Keyboard.KEY_DOWN))) dy -= 1f;
+        if (keys && (Keyboard.isKeyDown(Keyboard.KEY_D) || Keyboard.isKeyDown(Keyboard.KEY_RIGHT))) dx += 1f;
+        if (keys && (Keyboard.isKeyDown(Keyboard.KEY_A) || Keyboard.isKeyDown(Keyboard.KEY_LEFT))) dx -= 1f;
 
         float speed = TcoSettings.cameraPanSpeed * camZoom;
         if (Keyboard.isKeyDown(Keyboard.KEY_LSHIFT) || Keyboard.isKeyDown(Keyboard.KEY_RSHIFT)) {
@@ -1831,8 +2309,12 @@ public class RtsCombatPlugin extends BaseEveryFrameCombatPlugin {
     @Override
     public void renderInWorldCoords(ViewportAPI viewport) {
         if (!inBattle() || mode != Mode.RTS || uiBusy()) return;
+        // Again before drawing: the ship's AI may have picked a target after our advance
+        if (!engine.isCombatOver()) keepPickedTarget(false);
         FogOfWar.render(viewport);
         RadarCombatPlugin.render(engine, viewport, selected);
+        CicView.render(engine, viewport);
+        renderMapEdge();
 
         GL11.glPushAttrib(GL11.GL_ALL_ATTRIB_BITS);
         GL11.glDisable(GL11.GL_TEXTURE_2D);
@@ -1956,6 +2438,8 @@ public class RtsCombatPlugin extends BaseEveryFrameCombatPlugin {
         if (mode == Mode.RTS) {
             renderSelectionPanel();
             renderCommandCard();
+            cicPanel.render(engine, selected);
+            threatBoard.render(engine, cicPanel.top() > 0f ? cicPanel.top() + 10f : 16f);
             if (helpOpen) renderHelp();
         }
         SpriteAPI sprite = currentButton();
@@ -2011,7 +2495,7 @@ public class RtsCombatPlugin extends BaseEveryFrameCombatPlugin {
      * Command card: one button per order or toggle, greyed out when it doesn't apply.
      * Attack-move and Board wait for a map click (right click cancels).
      */
-    private enum Command { STOP, HOLD_FIRE, ATTACK_MOVE, RETREAT, STANCE, FORMATION, BOARD, HANGAR, SHIP_AI, PILOT, SAVE, HELP }
+    private enum Command { STOP, HOLD_FIRE, ATTACK_MOVE, RETREAT, STANCE, FORMATION, BOARD, IGNORE, HANGAR, FIGHTERS, SHIP_AI, PILOT, SAVE, HELP }
 
     private static final float CMD_W = 150f;
     private static final float CMD_H = 26f;
@@ -2048,10 +2532,71 @@ public class RtsCombatPlugin extends BaseEveryFrameCombatPlugin {
     }
 
     private boolean anyCanBoard() {
+        if (!TcoSettings.boardingEnabled) return false;
         for (ShipAPI ship : selected) {
             if (BoardingCombatPlugin.hasBay(ship)) return true;
         }
         return false;
+    }
+
+    /** Ignore the enemy ship under the cursor, or stop ignoring it (IgnoredTargets). */
+    private void ignoreUnderCursor() {
+        ViewportAPI viewport = engine.getViewport();
+        ShipAPI target = shipAt(viewport.convertScreenXToWorldX(mouseX()), viewport.convertScreenYToWorldY(mouseY()), false);
+        if (target != null && target.getParentStation() != null) target = target.getParentStation();
+        if (target == null || target.getOwner() == 0 || target.isAlly()) {
+            message("Point at an enemy ship and press " + key(TcoSettings.keyIgnore) + " to ignore it.");
+            return;
+        }
+        boolean now = IgnoredTargets.toggle(engine, target);
+        message(now ? "Ignoring " + target.getName() + ": your ships hold fire on it." : "No longer ignoring " + target.getName() + ".");
+    }
+
+    private static boolean hasFighters(ShipAPI ship) {
+        return !ship.isFighter() && ship.hasLaunchBays() && !ship.getLaunchBaysCopy().isEmpty();
+    }
+
+    private boolean anyHasFighters() {
+        for (ShipAPI ship : selected) {
+            if (hasFighters(ship)) return true;
+        }
+        return false;
+    }
+
+    /** Engage <-> regroup for the selected carriers' fighters; kept over the ship AI's own choice (keepFighterModes). */
+    private void toggleFighters() {
+        List<ShipAPI> carriers = new ArrayList<ShipAPI>();
+        boolean anyEngaging = false;
+        for (ShipAPI ship : selected) {
+            if (!hasFighters(ship)) continue;
+            carriers.add(ship);
+            if (!ship.isPullBackFighters()) anyEngaging = true;
+        }
+        if (carriers.isEmpty()) {
+            message("Selected ships: no fighter bays.");
+            return;
+        }
+        for (ShipAPI ship : carriers) {
+            fighterPullBack.put(ship, anyEngaging);
+            ship.setPullBackFighters(anyEngaging);
+        }
+        message(anyEngaging ? "Selected carriers: fighters regroup." : "Selected carriers: fighters engage.");
+    }
+
+    /** The ship AI picks engage or regroup by itself; a carrier given one in RTS mode keeps it. */
+    private void keepFighterModes() {
+        Iterator<Map.Entry<ShipAPI, Boolean>> it = fighterPullBack.entrySet().iterator();
+        while (it.hasNext()) {
+            Map.Entry<ShipAPI, Boolean> entry = it.next();
+            ShipAPI ship = entry.getKey();
+            if (!ship.isAlive() || ship.isHulk() || !engine.isEntityInPlay(ship)) {
+                it.remove();
+                continue;
+            }
+            // Flown by the player: their own Z key
+            if (AiUtil.playerFlying(engine, ship)) continue;
+            if (ship.isPullBackFighters() != entry.getValue()) ship.setPullBackFighters(entry.getValue());
+        }
     }
 
     private boolean anyCarriesCraft() {
@@ -2064,6 +2609,7 @@ public class RtsCombatPlugin extends BaseEveryFrameCombatPlugin {
     private boolean enabled(Command command) {
         switch (command) {
             case HELP:
+            case IGNORE:
                 return true;
             case SAVE:
                 for (UnitState unit : units.values()) {
@@ -2076,6 +2622,8 @@ public class RtsCombatPlugin extends BaseEveryFrameCombatPlugin {
                 return anyCanBoard();
             case HANGAR:
                 return anyCarriesCraft();
+            case FIGHTERS:
+                return anyHasFighters();
             default:
                 return !selected.isEmpty();
         }
@@ -2119,12 +2667,21 @@ public class RtsCombatPlugin extends BaseEveryFrameCombatPlugin {
             }
             case BOARD:
                 return "Board  [" + key(TcoSettings.keyBoard) + "]";
+            case IGNORE:
+                return "Ignore target  [" + key(TcoSettings.keyIgnore) + "]";
             case HANGAR: {
                 boolean anyHeld = false;
                 for (ShipAPI ship : selected) {
                     if (HangarCombatPlugin.isHeld(ship)) anyHeld = true;
                 }
                 return (anyHeld ? "Open hangar" : "Close hangar") + "  [" + key(TcoSettings.keyHangar) + "]";
+            }
+            case FIGHTERS: {
+                boolean anyEngaging = false;
+                for (ShipAPI ship : selected) {
+                    if (hasFighters(ship) && !ship.isPullBackFighters()) anyEngaging = true;
+                }
+                return (anyEngaging ? "Fighters regroup" : "Fighters engage") + "  [" + key(TcoSettings.keyFighters) + "]";
             }
             case SHIP_AI:
                 return "Ship AI  [" + key(TcoSettings.keyToggleShipAI) + "]";
@@ -2140,27 +2697,32 @@ public class RtsCombatPlugin extends BaseEveryFrameCombatPlugin {
     private String tipOf(Command command) {
         switch (command) {
             case STOP:
-                return "Drop all orders and stop. Boarding shuttles still on the way come home.";
+                return "Drop all orders and stop. Boarding shuttles on the way turn back.";
             case HOLD_FIRE:
-                return "Stop all firing, or let them fire again.";
+                return "Stop firing, or open fire again.";
             case ATTACK_MOVE:
-                return "Click a point: move there, fighting whatever is met on the way.";
+                return "Click a point: move there, fighting anything on the way.";
             case RETREAT:
-                return "Leave the battle by your edge of the map. Any new order calls it off.";
+                return "Leave the battle by your edge of the map. A new order cancels it.";
             case STANCE:
                 return "Pick a stance from the list (" + key(TcoSettings.keyStance) + " cycles them).";
             case FORMATION:
-                return "Line up behind the biggest ship; again for wedge, column, or to break up.";
+                return "Line up behind the biggest ship. Press again for wedge, column, or to break up.";
             case BOARD:
-                return "Click an enemy ship: boarding ships close in and send marines.";
+                return "Click an enemy ship to send your boarding ships after it.";
+            case IGNORE:
+                return "Click an enemy ship: your ships stop shooting at it, so you don't destroy a ship you're boarding."
+                        + " Click it again to undo.";
             case HANGAR:
-                return "Keep fighters, supply shuttles and repair drones aboard, or let them out.";
+                return "Keep fighters, shuttles and drones aboard, or let them out.";
+            case FIGHTERS:
+                return "Fighters regroup around their carrier, or go out and engage.";
             case SHIP_AI:
-                return "Hand the ships to the normal ship AI, or take them back.";
+                return "Hand the ships to the game's AI, or take them back.";
             case PILOT:
                 return "Fly the selected ship yourself. " + key(TcoSettings.keyDirectControl) + " again to come back.";
             case SAVE:
-                return "Keep stances changed in this battle for the next ones.";
+                return "Keep this battle's stance changes for future battles.";
             default:
                 return "Show every mouse control and key.";
         }
@@ -2177,6 +2739,7 @@ public class RtsCombatPlugin extends BaseEveryFrameCombatPlugin {
                 break;
             case ATTACK_MOVE:
             case BOARD:
+            case IGNORE:
                 pending = command;
                 break;
             case RETREAT:
@@ -2190,6 +2753,9 @@ public class RtsCombatPlugin extends BaseEveryFrameCombatPlugin {
                 break;
             case HANGAR:
                 toggleHangarHold(selected, "Selected ships");
+                break;
+            case FIGHTERS:
+                toggleFighters();
                 break;
             case SHIP_AI:
                 toggleAiForSelection();
@@ -2211,6 +2777,8 @@ public class RtsCombatPlugin extends BaseEveryFrameCombatPlugin {
         pending = null;
         if (command == Command.BOARD) {
             boardSelection(shift);
+        } else if (command == Command.IGNORE) {
+            ignoreUnderCursor();
         } else if (command == Command.ATTACK_MOVE && !selected.isEmpty()) {
             ViewportAPI viewport = engine.getViewport();
             issueOrder(viewport.convertScreenXToWorldX(mouseX()), viewport.convertScreenYToWorldY(mouseY()),
@@ -2243,8 +2811,9 @@ public class RtsCombatPlugin extends BaseEveryFrameCombatPlugin {
         }
         // Tip line above the card
         String tip = null;
-        if (pending == Command.ATTACK_MOVE) tip = "Click a point on the map to attack-move there. Right click to cancel.";
-        else if (pending == Command.BOARD) tip = "Click an enemy ship to board it. Right click to cancel.";
+        if (pending == Command.ATTACK_MOVE) tip = "Click where to attack-move. Right-click to cancel.";
+        else if (pending == Command.BOARD) tip = "Click an enemy ship to board. Right-click to cancel.";
+        else if (pending == Command.IGNORE) tip = "Click an enemy ship to ignore or unignore it. Right-click to cancel.";
         else if (hover != null && !stanceMenuOpen) tip = tipOf(hover);
         renderStanceMenu();
         if (tip != null) {
@@ -2273,11 +2842,11 @@ public class RtsCombatPlugin extends BaseEveryFrameCombatPlugin {
 
     private static final String[] MOUSE_HELP = {
         "Left click / drag a box: select ships.   Shift: add to or remove from the selection.",
-        "Right click: move there / attack an enemy / escort a friend / capture an objective.   Shift: queue it.",
+        "Right click: move / attack an enemy / escort a friend / capture an objective.   Shift: queue it.",
         "Right drag: move there and face that way.   Shift + right drag: turn first, then slide there.",
         "Alt + right drag, or right drag starting on a selected ship: turn in place.",
-        "Ctrl + right click: attack-move (fight whatever is met on the way).",
-        "Right click a stranded friend with a Tug Rig ship selected: take it in tow.",
+        "Ctrl + right click: attack-move.",
+        "Right click a stranded ship with a Tug Rig ship selected: tow it.",
         "WASD / arrows, or hold the middle button and drag: move the camera.   Wheel: zoom.",
         "Ctrl + 1-9: save a group.   1-9: select it.   Shift + 1-9: add it to the selection.",
     };
@@ -2611,6 +3180,7 @@ public class RtsCombatPlugin extends BaseEveryFrameCombatPlugin {
                 tags.add(RadarCombatPlugin.isHoldingMissiles(engine, ship) ? "RADAR MSL HELD" : "Radar msl free");
             }
             if (HangarCombatPlugin.isHeld(ship)) tags.add("HANGAR CLOSED");
+            if (hasFighters(ship) && ship.isPullBackFighters()) tags.add("FIGHTERS REGROUP");
         }
         String jammer = RadarCombatPlugin.jammerStatus(engine, ship);
         if (jammer != null && (intel || jammer.toUpperCase().contains("JAMMING"))) tags.add(jammer);
@@ -2636,8 +3206,8 @@ public class RtsCombatPlugin extends BaseEveryFrameCombatPlugin {
             }
             int security = boarding == null ? -1 : boarding.securityDroidsOf(ship);
             if (security >= 0) {
-                textRows(full, "Security droids " + security + " / " + SecurityForge.droidsFor(ship.getHullSize())
-                        + "   |   defence only, rebuilt after battle", new Color(170, 200, 255), fullW, false);
+                textRows(full, "Security droids " + security + " / " + SecurityForge.droidsFor(ship.getHullSize()),
+                        new Color(170, 200, 255), fullW, false);
             }
             boolean bay = BoardingCombatPlugin.hasBay(ship);
             int marinesAboard = boarding == null ? 0 : boarding.marinesAboard(ship);

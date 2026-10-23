@@ -18,11 +18,14 @@ public final class Keybinds {
         {"keyFormation", "Formation (line, wedge, column, break up)"},
         {"keyBoard", "Board the enemy ship under the cursor"},
         {"keyHangar", "Close / open hangar"},
+        {"keyFighters", "Fighters: engage / regroup"},
+        {"keyIgnore", "Ignore the enemy ship under the cursor / stop"},
         {"keyFlares", "Drop flares"},
         {"keyRadar", "Radar off / on"},
         {"keyRadarHold", "Hold / release radar missiles"},
         {"keyJammer", "Noise jammer: auto / on / off"},
         {"keyRadarUnlock", "Release the radar lock"},
+        {"keyMissileCam", "Hold: follow your newest missile"},
         {"keyToggleShipAI", "Hand to / take back from the ship AI"},
         {"keyDirectControl", "Pilot the selected ship / back to RTS"},
         {"keyToggleMode", "Switch between RTS and normal controls"},
@@ -40,11 +43,14 @@ public final class Keybinds {
         if ("keyFormation".equals(name)) return TcoSettings.keyFormation;
         if ("keyBoard".equals(name)) return TcoSettings.keyBoard;
         if ("keyHangar".equals(name)) return TcoSettings.keyHangar;
+        if ("keyFighters".equals(name)) return TcoSettings.keyFighters;
+        if ("keyIgnore".equals(name)) return TcoSettings.keyIgnore;
         if ("keyFlares".equals(name)) return TcoSettings.keyFlares;
         if ("keyRadar".equals(name)) return TcoSettings.keyRadar;
         if ("keyRadarHold".equals(name)) return TcoSettings.keyRadarHold;
         if ("keyJammer".equals(name)) return TcoSettings.keyJammer;
         if ("keyRadarUnlock".equals(name)) return TcoSettings.keyRadarUnlock;
+        if ("keyMissileCam".equals(name)) return TcoSettings.keyMissileCam;
         if ("keyToggleShipAI".equals(name)) return TcoSettings.keyToggleShipAI;
         if ("keyDirectControl".equals(name)) return TcoSettings.keyDirectControl;
         if ("keyToggleMode".equals(name)) return TcoSettings.keyToggleMode;
@@ -60,11 +66,14 @@ public final class Keybinds {
         else if ("keyFormation".equals(name)) TcoSettings.keyFormation = key;
         else if ("keyBoard".equals(name)) TcoSettings.keyBoard = key;
         else if ("keyHangar".equals(name)) TcoSettings.keyHangar = key;
+        else if ("keyFighters".equals(name)) TcoSettings.keyFighters = key;
+        else if ("keyIgnore".equals(name)) TcoSettings.keyIgnore = key;
         else if ("keyFlares".equals(name)) TcoSettings.keyFlares = key;
         else if ("keyRadar".equals(name)) TcoSettings.keyRadar = key;
         else if ("keyRadarHold".equals(name)) TcoSettings.keyRadarHold = key;
         else if ("keyJammer".equals(name)) TcoSettings.keyJammer = key;
         else if ("keyRadarUnlock".equals(name)) TcoSettings.keyRadarUnlock = key;
+        else if ("keyMissileCam".equals(name)) TcoSettings.keyMissileCam = key;
         else if ("keyToggleShipAI".equals(name)) TcoSettings.keyToggleShipAI = key;
         else if ("keyDirectControl".equals(name)) TcoSettings.keyDirectControl = key;
         else if ("keyToggleMode".equals(name)) TcoSettings.keyToggleMode = key;

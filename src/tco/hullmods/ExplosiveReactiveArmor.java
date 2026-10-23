@@ -27,6 +27,7 @@ import com.fs.starfarer.api.combat.ShipAPI.HullSize;
 import com.fs.starfarer.api.combat.listeners.DamageTakenModifier;
 
 import tco.TcoSettings;
+import tco.missile.TandemCombatPlugin;
 import tco.armor.ArmorEffects;
 
 /**
@@ -258,6 +259,12 @@ public class ExplosiveReactiveArmor extends BaseHullMod {
         if (s.charges[x][y] <= 0) return d;
         s.charges[x][y]--;
         d.mult = Math.max(0f, d.missile ? TcoSettings.eraMissileDamageMult : TcoSettings.eraShellDamageMult);
+        // Tandem warheads: the precursor defeats the charge at the cost of part of the warhead; one that already went
+        // through a shield has nothing left
+        if (d.missile && TandemWarheads.fired((MissileAPI) param)) {
+            float loss = Math.max(0f, Math.min(1f, TcoSettings.tandemPenetrationLoss));
+            d.mult = TandemCombatPlugin.wentThroughShield(param) ? Math.max(0f, 1f - 2f * loss) / Math.max(0.01f, 1f - loss) : 1f - loss;
+        }
         if (s.charges[x][y] <= 0) {
             d.spent = true;
             CombatEngineAPI engine = Global.getCombatEngine();

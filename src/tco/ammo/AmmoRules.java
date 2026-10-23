@@ -29,21 +29,26 @@ public final class AmmoRules {
     private AmmoRules() {
     }
 
-    /** Projectile ballistics; beams and energy weapons excluded. */
-    public static boolean isBallisticGun(WeaponAPI weapon) {
-        return !weapon.isDecorative()
-                && weapon.getType() == WeaponType.BALLISTIC
-                && !weapon.isBeam();
+    /** Projectile ballistics, and energy projectile weapons put on ammo (EnergyAmmo); beams excluded. */
+    public static boolean isAmmoGun(WeaponAPI weapon) {
+        if (weapon.isDecorative() || weapon.isBeam()) return false;
+        return weapon.getType() == WeaponType.BALLISTIC || EnergyAmmo.isMarked(weapon);
     }
 
-    /** Ballistics without ammo get a magazine. */
+    /** Ammo guns without ammo get a magazine. */
     public static boolean shouldLimit(WeaponAPI weapon) {
-        return isBallisticGun(weapon) && !weapon.usesAmmo();
+        return isAmmoGun(weapon) && !weapon.usesAmmo();
     }
 
-    /** Ballistics with their own self-reloading magazine; reloads draw from a finite reserve. */
+    /** Ammo guns with their own self-reloading magazine; reloads draw from a finite reserve. */
     public static boolean isClipFed(WeaponAPI weapon) {
-        return isBallisticGun(weapon) && weapon.usesAmmo() && weapon.getAmmoPerSecond() > 0f;
+        return isAmmoGun(weapon) && weapon.usesAmmo() && weapon.getAmmoPerSecond() > 0f;
+    }
+
+    /** The ship's ammo bonus for the weapon's type (energy weapons on ammo use the energy one). */
+    private static float withAmmoBonus(WeaponAPI weapon, ShipAPI ship, float shots) {
+        if (weapon.getType() == WeaponType.ENERGY) return ship.getMutableStats().getEnergyAmmoBonus().computeEffective(shots);
+        return ship.getMutableStats().getBallisticAmmoBonus().computeEffective(shots);
     }
 
     /** Ammo multiplier: pdAmmoMult for PD, otherwise by mount size. */
@@ -66,7 +71,7 @@ public final class AmmoRules {
         }
 
         float shots = shotsPerSecond * TcoSettings.ammoSeconds * stockMult(weapon.hasAIHint(AIHints.PD), weapon.getSize());
-        shots = ship.getMutableStats().getBallisticAmmoBonus().computeEffective(shots);
+        shots = withAmmoBonus(weapon, ship, shots);
         int floor = Math.max(TcoSettings.minAmmo, weapon.getMaxAmmo() * 2);
         return Math.max(floor, Math.min(99999, Math.round(shots)));
     }
@@ -83,7 +88,7 @@ public final class AmmoRules {
         }
 
         float shots = shotsPerSecond * TcoSettings.ammoSeconds * stockMult(weapon.hasAIHint(AIHints.PD), weapon.getSize());
-        shots = ship.getMutableStats().getBallisticAmmoBonus().computeEffective(shots);
+        shots = withAmmoBonus(weapon, ship, shots);
         return Math.max(TcoSettings.minAmmo, Math.min(99999, Math.round(shots)));
     }
 
@@ -92,7 +97,7 @@ public final class AmmoRules {
         if (weapon.isDecorative() || !weapon.usesAmmo()) return false;
         if (weapon.getAmmoPerSecond() > 0f) return false;
         WeaponType type = weapon.getType();
-        return type == WeaponType.BALLISTIC || type == WeaponType.MISSILE;
+        return type == WeaponType.BALLISTIC || type == WeaponType.MISSILE || EnergyAmmo.isMarked(weapon);
     }
 
     public static float fullReloadCost(WeaponAPI weapon) {

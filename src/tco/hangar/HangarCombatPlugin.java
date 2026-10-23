@@ -31,6 +31,9 @@ public class HangarCombatPlugin extends BaseEveryFrameCombatPlugin {
     public static final String HOLD_KEY = "tco_hangar_hold";
     private static final float LANDING_TIMEOUT = 6f;
     private static final float REARM_SECONDS = 10f;
+    private static final float LANDING_REACH = 150f;
+    private static final float LATE_SECONDS = 10f;
+    private static final float LATE_REACH = 2000f;
 
     private enum Stage { INBOUND, LANDING, DOCKED }
 
@@ -113,9 +116,11 @@ public class HangarCombatPlugin extends BaseEveryFrameCombatPlugin {
                     craft.ai.flyTo(deck);
                     float dx = fighter.getLocation().x - deck.x;
                     float dy = fighter.getLocation().y - deck.y;
-                    float reach = fighter.getCollisionRadius() + 30f;
-                    // After a while, anywhere over the hull will do
-                    if (craft.time > 15f) reach = Math.max(reach, carrier.getCollisionRadius() * 0.6f);
+                    // Anywhere over or near the hull: landing slides it onto the deck (follow). A small target on a
+                    // moving carrier made fast fighters overshoot and circle it for good
+                    float reach = carrier.getCollisionRadius() + LANDING_REACH;
+                    // Still out there after a while: bring it in from further off
+                    if (craft.time > LATE_SECONDS) reach = Math.max(reach, LATE_REACH);
                     if (dx * dx + dy * dy < reach * reach) {
                         craft.stage = Stage.LANDING;
                         craft.time = 0f;

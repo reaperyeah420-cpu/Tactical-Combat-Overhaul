@@ -10,11 +10,13 @@ public class AesaRadar extends BaseHullMod {
 
     @Override
     public boolean isApplicableToShip(ShipAPI ship) {
-        return ship != null && ship.getVariant() != null && !ship.getVariant().hasHullMod(RadarRemoval.ID);
+        return ship != null && ship.getVariant() != null && !ship.getVariant().hasHullMod(RadarRemoval.ID)
+                && CombatInformationCenter.level(ship) == 0;
     }
 
     @Override
     public String getUnapplicableReason(ShipAPI ship) {
+        if (CombatInformationCenter.level(ship) > 0) return "The CIC has its own radar";
         return "Incompatible with Radar Removal";
     }
 

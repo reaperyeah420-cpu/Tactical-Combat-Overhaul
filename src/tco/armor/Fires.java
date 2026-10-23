@@ -17,6 +17,7 @@ import com.fs.starfarer.api.combat.ShipAPI;
 import com.fs.starfarer.api.combat.ShipAPI.HullSize;
 
 import tco.TcoSettings;
+import tco.hullmods.DamageControl;
 
 /**
  * Fires aboard a ship from cook-offs and hull breaches; hull damage over time, never below fireHullFloor.
@@ -74,7 +75,7 @@ public final class Fires {
         fire.scale = big ? 1f + (float) Math.random() * 0.65f : 0.35f + (float) Math.random() * 0.45f;
         float min = TcoSettings.fireMinSeconds;
         float max = Math.max(min, TcoSettings.fireMaxSeconds);
-        fire.left = min + (float) Math.random() * (max - min);
+        fire.left = (min + (float) Math.random() * (max - min)) * DamageControl.fireDurationMult(ship);
         fires.add(fire);
         ArmorEffects.label(engine, at, big ? "Fire!" : "Small fire", MAIN, ship);
         if (logged++ < 20) {
@@ -98,7 +99,7 @@ public final class Fires {
         fire.ly = (float) (dx * Math.sin(a) + dy * Math.cos(a));
         fire.big = big;
         fire.scale = big ? 1f + (float) Math.random() * 0.65f : 0.35f + (float) Math.random() * 0.45f;
-        fire.left = seconds;
+        fire.left = seconds * DamageControl.fireDurationMult(ship);
         fires.add(fire);
     }
 
@@ -115,7 +116,8 @@ public final class Fires {
             }
 
             // Hull damage as a share of max hull per second, never below the floor
-            float dps = ship.getMaxHitpoints() * (fire.big ? TcoSettings.fireHullPctBig : TcoSettings.fireHullPctSmall);
+            float dps = ship.getMaxHitpoints() * (fire.big ? TcoSettings.fireHullPctBig : TcoSettings.fireHullPctSmall)
+                    * DamageControl.fireDamageMult(ship);
             float hull = ship.getHitpoints();
             float floor = TcoSettings.fireHullFloor;
             if (hull > floor) ship.setHitpoints(Math.max(floor, hull - dps * amount));

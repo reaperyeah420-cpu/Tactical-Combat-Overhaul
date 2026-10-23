@@ -10,6 +10,8 @@ import com.fs.starfarer.api.combat.ShipAPI;
 
 import lunalib.backend.util.ReflectionUtils;
 
+import tco.patches.Patches;
+
 /**
  * Rewrites the weapon cards for the ship open in the refit screen, and back to base values on leaving.
  * The ship is read from the screen's non-API objects via LunaLib's reflection helper; any failure turns this
@@ -38,6 +40,9 @@ public class RefitShipCards implements EveryFrameScript {
     private static Boolean uwc;
 
     private static boolean wanted() {
+        // The tooltip patch writes the cards as each tooltip opens, once it has shown it gets the ship's stats;
+        // until then this script keeps doing it
+        if (Patches.refitCards() && Patches.refitCardsDelivered) return false;
         if (uwc == null) uwc = Global.getSettings().getModManager().isModEnabled("unthemedweapons");
         return TcoSettings.refitShipCards && (uwc || TcoSettings.refitShipCardsAlways);
     }

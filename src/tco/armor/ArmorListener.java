@@ -24,8 +24,8 @@ import tco.hullmods.ExplosiveReactiveArmor;
 import tco.hullmods.SpallLining;
 
 /**
- * Bounce and penetration rules for kinetic and HE ballistic shells on armor; everything else is left
- * to vanilla. Derived from the shot and the armor it hits, so other mods need no setup. Effects are
+ * Bounce and penetration rules for kinetic and HE ballistic shells on armor; energy bolts get heat soak
+ * (EnergyHeat); everything else is left to vanilla. Derived from the shot and the armor it hits, so other mods need no setup. Effects are
  * queued in ArmorEffects and applied next frame, outside collision handling.
  */
 public class ArmorListener implements DamageTakenModifier {
@@ -99,7 +99,8 @@ public class ArmorListener implements DamageTakenModifier {
     public String modifyDamageTaken(Object param, CombatEntityAPI target, DamageAPI damage,
             Vector2f point, boolean shieldHit) {
         Hit hit = classify(param, target, damage, point, shieldHit);
-        if (hit == null) return null;
+        // Not a ballistic shell: energy bolts get heat soak, the rest vanilla
+        if (hit == null) return EnergyHeat.onHit(param, target, damage, point, shieldHit);
         ShipAPI ship = hit.ship;
         DamagingProjectileAPI shell = hit.shell;
         ArmorGridAPI grid = hit.grid;

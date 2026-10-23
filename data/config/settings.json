@@ -16,6 +16,17 @@
         "tco_podCombatPlugin": "tco.rescue.EscapePodPlugin",
         "tco_deathThroesPlugin": "tco.battle.DeathThroes",
         "tco_supportDeployment": "tco.ai.SupportDeployment",
+        "tco_aiAwareness": "tco.ai.AiAwareness",
+        "tco_searchAndDestroy": "tco.ai.SearchAndDestroy",
+        "tco_lowPriorityTargets": "tco.ai.LowPriorityTargets",
+        "tco_retreatDiagnostics": "tco.ai.RetreatDiagnostics",
+        "tco_ignoredTargets": "tco.rts.IgnoredTargets",
+        "tco_missileCam": "tco.rts.MissileCam",
+        "tco_ewPlugin": "tco.radar.EwCombatPlugin",
+        "tco_fleetWarnings": "tco.radar.FleetWarnings",
+        "tco_commandNetwork": "tco.radar.CommandNetwork",
+        "tco_sensorPickets": "tco.radar.SensorPickets",
+        "tco_tandemPlugin": "tco.missile.TandemCombatPlugin",
         "tco_abandonedOutposts": "tco.battle.AbandonedOutposts"
     },
     "graphics": {

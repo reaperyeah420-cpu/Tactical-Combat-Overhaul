@@ -12,6 +12,7 @@ import com.fs.starfarer.api.mission.MissionDefinitionAPI;
 import tco.TcoSettings;
 import tco.dock.RepairDock;
 import tco.fob.SupplyFob;
+import tco.patches.Patches;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -57,6 +58,10 @@ public class ScaledBattleCreationPlugin implements BattleCreationPlugin {
             if (!escape) {
                 float standoff = scaled.getHeight() * TcoSettings.deployStandoffFraction;
                 if (context.getStandoffRange() < standoff) context.setStandoffRange(standoff);
+                // Each side starts standoff/2 from the centre: keep it clear of the retreat zone at its edge
+                float zone = Patches.retreatEdge() ? TcoSettings.retreatEdgeDistance : 2000f;
+                float widest = scaled.getHeight() - 2f * (zone + Math.max(0f, TcoSettings.deployEdgeClearance));
+                if (widest > 0f && context.getStandoffRange() > widest) context.setStandoffRange(widest);
             }
         }
 

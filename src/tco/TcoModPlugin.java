@@ -4,9 +4,11 @@ import com.fs.starfarer.api.BaseModPlugin;
 import com.fs.starfarer.api.Global;
 
 import tco.ai.NpcHullmods;
+import tco.ammo.EnergyAmmo;
 import tco.battle.TcoCampaignPlugin;
 import tco.boarding.BoardingResults;
 import tco.boarding.MarineScreen;
+import tco.patches.PatchLibSetup;
 import tco.radar.RadarSetup;
 import tco.rescue.PodResults;
 
@@ -23,8 +25,19 @@ public class TcoModPlugin extends BaseModPlugin {
                 Global.getLogger(TcoModPlugin.class).warn("TCO: could not set up the LunaLib settings menu", e);
             }
         }
-        // Radar setup must run before the weapon cards
+        // PatchLib is optional; it can only look up its targets during application load
+        if (Global.getSettings().getModManager().isModEnabled("patchlib")) {
+            try {
+                PatchLibSetup.init();
+            } catch (Throwable e) {
+                Global.getLogger(TcoModPlugin.class).warn("TCO: PatchLib unavailable, using the old methods", e);
+            }
+        } else {
+            Global.getLogger(TcoModPlugin.class).info("TCO: PatchLib not enabled, using the API-only methods");
+        }
+        // Radar setup and energy ammo must run before the weapon cards
         RadarSetup.apply();
+        EnergyAmmo.apply();
         WeaponCards.apply();
     }
 
@@ -38,8 +51,10 @@ public class TcoModPlugin extends BaseModPlugin {
         Global.getSector().addTransientListener(new PodResults.Listener());
         Global.getSector().addTransientScript(new MarineScreen.Hotkey());
         Global.getSector().addTransientScript(new NpcHullmods.Scanner());
+        Global.getSector().addTransientScript(new RefitPowerWatcher());
         NpcHullmods.opBonus(Global.getSector().getPlayerStats());
         // LunaLib values may have changed since startup
+        EnergyAmmo.apply();
         WeaponCards.apply();
         // Ship-adjusted refit cards (needs LunaLib)
         if (TcoSettings.lunaEnabled()) {

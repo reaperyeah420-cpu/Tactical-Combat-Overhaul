@@ -19,8 +19,7 @@ public class SupplyFobEffect extends BaseBattleObjectiveEffect {
 
     @Override
     public String getLongDescription() {
-        return "Capturing this sets up a Supply FOB behind your lines: a munitions depot that resupplies"
-                + " nearby friendly ships and restocks resupply ships. The FOB stays yours until it is destroyed."
-                + " While you hold the array and already have a FOB, the FOB's stock slowly refills.";
+        return "Capture it to set up a Supply FOB: a munitions depot that rearms nearby friendly ships and restocks"
+                + " supply ships. It's yours until it's destroyed, and its stock slowly refills while you hold the array.";
     }
 }

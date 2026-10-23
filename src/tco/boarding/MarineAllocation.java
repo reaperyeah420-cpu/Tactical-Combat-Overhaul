@@ -108,9 +108,20 @@ public final class MarineAllocation {
         return compute(members, marines, loadAll(members));
     }
 
+    /** The player set this ship's number (as opposed to the automatic default). */
+    public static boolean isSet(Entry entry) {
+        return entry != null && entry.target >= 0;
+    }
+
+    /**
+     * Priority targets, then other targets (shared in proportion when short). Leftovers go to ships on their
+     * automatic target first; ships with a number set only take more once those are full, and "no marines"
+     * ships last.
+     */
     public static Result compute(List<FleetMemberAPI> members, int marines, Map<String, Entry> entries) {
         Result result = new Result();
-        List<FleetMemberAPI> normal = new ArrayList<FleetMemberAPI>();
+        List<FleetMemberAPI> automatic = new ArrayList<FleetMemberAPI>();
+        List<FleetMemberAPI> set = new ArrayList<FleetMemberAPI>();
         List<FleetMemberAPI> priority = new ArrayList<FleetMemberAPI>();
         List<FleetMemberAPI> ordinary = new ArrayList<FleetMemberAPI>();
         List<FleetMemberAPI> excluded = new ArrayList<FleetMemberAPI>();
@@ -124,7 +135,8 @@ public final class MarineAllocation {
                 excluded.add(member);
                 continue;
             }
-            normal.add(member);
+            if (isSet(entry)) set.add(member);
+            else automatic.add(member);
             targets.put(member.getId(), targetOf(member, entry));
             if (entry != null && entry.priority) priority.add(member);
             else ordinary.add(member);
@@ -133,7 +145,8 @@ public final class MarineAllocation {
         int left = Math.max(0, marines);
         left = fillTargets(priority, targets, result.assigned, left);
         left = fillTargets(ordinary, targets, result.assigned, left);
-        left = spreadEvenly(normal, result.assigned, left);
+        left = spreadEvenly(automatic, result.assigned, left);
+        left = spreadEvenly(set, result.assigned, left);
         left = spreadEvenly(excluded, result.assigned, left);
         result.unassigned = left;
         return result;

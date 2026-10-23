@@ -137,7 +137,7 @@ public class TowCombatPlugin extends BaseEveryFrameCombatPlugin {
 
     private boolean isFreeAiShip(ShipAPI ship) {
         if (!ship.isAlive() || ship.isHulk() || ship.isRetreating() || ship.isFighter()) return false;
-        if (ship == engine.getPlayerShip() && !engine.isUIAutopilotOn()) return false;
+        if (AiUtil.playerFlying(engine, ship)) return false;
         if (RtsCombatPlugin.controls(engine, ship)) return false;
         if (isImmobilized(engine, ship)) return false;
         return AiUtil.isGameAi(ship);
@@ -291,7 +291,7 @@ public class TowCombatPlugin extends BaseEveryFrameCombatPlugin {
         tow.tug.getMutableStats().getAcceleration().unmodify(SPEED_ID);
         if (tow.aiState != null) {
             tow.aiState.ai.restoreAutofire();
-            if (AiUtil.isOurs(tow.tug, tow.handle)) tow.tug.resetDefaultAI();
+            if (AiUtil.isOurs(tow.tug, tow.handle)) AiUtil.resetDefault(tow.tug);
         } else if (unit != null && "arrived".equals(why) && unit.order == OrderType.MOVE) {
             unit.hold();
         }

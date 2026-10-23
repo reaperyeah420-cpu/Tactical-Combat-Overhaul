@@ -31,6 +31,7 @@ import com.fs.starfarer.api.input.InputEventAPI;
 import com.fs.starfarer.api.loading.MissileSpecAPI;
 import com.fs.starfarer.api.loading.WeaponSpecAPI;
 
+import tco.AiUtil;
 import tco.TcoSettings;
 import tco.ammo.AmmoRules;
 import tco.battle.DeathThroes;
@@ -227,7 +228,7 @@ public class IrCombatPlugin extends BaseEveryFrameCombatPlugin {
             if (!ship.isAlive() || ship.isHulk() || !reloadsInstead(ship)) continue;
             ShipSystemAPI system = ship.getSystem();
             int r = reloadsOf(ship);
-            boolean flown = ship == player && !engine.isUIAutopilotOn();
+            boolean flown = AiUtil.playerFlying(engine, ship);
             if (!flown || r <= 0 || left(ship) >= capacity(ship)) ship.blockCommandForOneFrame(ShipCommand.USE_SYSTEM);
             if (system.getMaxAmmo() > 0 && system.getMaxAmmo() < 1000) {
                 system.setAmmo(Math.min(r, system.getMaxAmmo()));
@@ -531,7 +532,7 @@ public class IrCombatPlugin extends BaseEveryFrameCombatPlugin {
         for (ShipAPI ship : threatened) {
             if (!carriesFlares(ship)) continue;
             // Player-flown ship only drops on the key
-            if (ship == player && !engine.isUIAutopilotOn()) continue;
+            if (AiUtil.playerFlying(engine, ship)) continue;
             if (ship.getOwner() == 0 && !TcoSettings.flaresAutoPlayer) continue;
             Float r = autoReady.get(ship);
             if (r != null && now < r) continue;

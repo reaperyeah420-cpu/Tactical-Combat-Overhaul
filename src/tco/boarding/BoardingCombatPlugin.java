@@ -47,6 +47,7 @@ import tco.AiUtil;
 import tco.BattleReport;
 import tco.Msg;
 import tco.TcoSettings;
+import tco.ai.AiAwareness;
 import tco.ai.SupportRoles;
 import tco.ammo.AmmoRules;
 import tco.ammo.ShuttleAI;
@@ -54,6 +55,8 @@ import tco.armor.Fires;
 import tco.battle.DeathThroes;
 import tco.fob.InertAI;
 import tco.fob.SupplyFob;
+import tco.hullmods.BreachingCharges;
+import tco.hullmods.MilitiaLockers;
 import tco.hullmods.SecurityForge;
 import tco.hullmods.ShuttleBayUpgrade;
 import tco.power.PowerCombatPlugin;
@@ -70,6 +73,8 @@ public class BoardingCombatPlugin extends BaseEveryFrameCombatPlugin {
     public static final String HULLMOD_ID = "tco_boarding_bay";
     public static final String CAPTURED_KEY = "tco_captured";
     private static final String SHUTTLE_VARIANT = "tco_boarding_shuttle_Hull";
+    // Threat fragment craft: a fighter, so point defence shoots at it
+    private static final String FRAGMENT_WING = "tco_boarding_fragment_wing";
     private static final String CIVILIAN_HULLMOD = "civgrade";
 
     private static final float TICK = 1f;
@@ -88,6 +93,8 @@ public class BoardingCombatPlugin extends BaseEveryFrameCombatPlugin {
         int marines;
         boolean playerOwned;
         boolean droids;
+        // Threat fragments, not marines (ThreatBoarding)
+        boolean fragments;
         boolean playerSide;
         Leg leg = Leg.OUTBOUND;
         float legTime = 0f;
@@ -105,6 +112,7 @@ public class BoardingCombatPlugin extends BaseEveryFrameCombatPlugin {
         boolean playerDefends;
         boolean droidDefenders;
         float droidAttackers;
+        float fragmentAttackers;
         float playerSide;
         final Map<ShipAPI, Float> sources = new HashMap<ShipAPI, Float>();
         float tick = 0f;
@@ -136,6 +144,12 @@ public class BoardingCombatPlugin extends BaseEveryFrameCombatPlugin {
         LabelAPI[] logLabels;
         String[] logTexts;
         float secDroids;
+        // Militia Lockers: the crew's fighting strength, in marines, counted inside defenders
+        float militia;
+        float militiaStart;
+        // Breaching Charges: the attack bonus runs until this fight time; ships whose first wave has landed
+        float breachUntil = -1f;
+        final java.util.Set<ShipAPI> breachedBy = new java.util.HashSet<ShipAPI>();
     }
 
     public enum BoardOrder {
@@ -193,6 +207,10 @@ public class BoardingCombatPlugin extends BaseEveryFrameCombatPlugin {
     // +1 player deployed in the upper half, -1 lower, 0 unknown yet
     private float homeSign = 0f;
     private float marinesSafe = 0f;
+    // Crew of the player's ships killed fighting as militia
+    private float militiaLost = 0f;
+    // Crew of the player's ships killed by Threat boarders who took them
+    private float threatCrewKilled = 0f;
     private boolean settled = false;
 
     private final Map<ShipAPI, Float> garrisons = new HashMap<ShipAPI, Float>();
@@ -217,12 +235,17 @@ public class BoardingCombatPlugin extends BaseEveryFrameCombatPlugin {
     public void init(CombatEngineAPI engine) {
         this.engine = engine;
         TcoSettings.load();
-        if (engine != null) engine.getCustomData().put(ENGINE_KEY, this);
         BoardingResults.captured.clear();
         BoardingResults.lost.clear();
         BoardingResults.newFlagship = null;
         BoardingResults.cores.clear();
         BoardingResults.disabled.clear();
+        // Boarding off: not registered, so get() is null everywhere and nothing is settled after the battle
+        if (!TcoSettings.boardingEnabled) {
+            BoardingResults.lastPlugin = null;
+            return;
+        }
+        if (engine != null) engine.getCustomData().put(ENGINE_KEY, this);
         BoardingResults.lastPlugin = this;
     }
 
@@ -335,6 +358,11 @@ public class BoardingCombatPlugin extends BaseEveryFrameCombatPlugin {
     private void giveBack(Craft craft) {
         if (craft.marines <= 0) return;
         ShipAPI source = craft.source;
+        if (craft.fragments) {
+            ThreatBoarding.returnHome(craft.ship, source);
+            craft.marines = 0;
+            return;
+        }
         // Droids only return to automated ships
         if (craft.droids && !isAutomated(source)) {
             craft.marines = 0;
@@ -372,6 +400,11 @@ public class BoardingCombatPlugin extends BaseEveryFrameCombatPlugin {
     public void settle() {
         if (settled) return;
         settled = true;
+        try {
+            storeSecurityDroids();
+        } catch (RuntimeException e) {
+            Global.getLogger(BoardingCombatPlugin.class).warn("TCO: could not save security droids", e);
+        }
         if (!poolReady || !campaignPool) return;
 
         float alive = unassigned + marinesSafe;
@@ -399,6 +432,26 @@ public class BoardingCombatPlugin extends BaseEveryFrameCombatPlugin {
                 if (fleet != null) fleet.getCargo().removeMarines(Math.min(lost, fleet.getCargo().getMarines()));
             } catch (RuntimeException e) {
                 Global.getLogger(BoardingCombatPlugin.class).warn("TCO: could not apply marine losses", e);
+            }
+        }
+        int scoured = Math.round(threatCrewKilled);
+        if (scoured > 0) {
+            BattleReport.add("Threat boarders: " + scoured + " crew killed aboard the ships they took.");
+            try {
+                CampaignFleetAPI fleet = Global.getSector().getPlayerFleet();
+                if (fleet != null) fleet.getCargo().removeCrew(Math.min(scoured, fleet.getCargo().getCrew()));
+            } catch (RuntimeException e) {
+                Global.getLogger(BoardingCombatPlugin.class).warn("TCO: could not apply crew killed by the Threat", e);
+            }
+        }
+        int militia = Math.round(militiaLost);
+        if (militia > 0) {
+            BattleReport.add("Militia: " + militia + " crew killed defending against boarders.");
+            try {
+                CampaignFleetAPI fleet = Global.getSector().getPlayerFleet();
+                if (fleet != null) fleet.getCargo().removeCrew(Math.min(militia, fleet.getCargo().getCrew()));
+            } catch (RuntimeException e) {
+                Global.getLogger(BoardingCombatPlugin.class).warn("TCO: could not apply militia losses", e);
             }
         }
         gainExperience(lost);
@@ -432,6 +485,21 @@ public class BoardingCombatPlugin extends BaseEveryFrameCombatPlugin {
             cooldown *= TcoSettings.efficientBayCooldownMult;
         }
         return cooldown;
+    }
+
+    /** Boarding shuttle hull, armour and shield flux x boardingShuttleToughness. */
+    private static void toughen(ShipAPI ship) {
+        float m = TcoSettings.boardingShuttleToughness;
+        if (m == 1f) return;
+        ship.setMaxHitpoints(ship.getMaxHitpoints() * m);
+        ship.setHitpoints(ship.getMaxHitpoints());
+        ship.getMutableStats().getFluxCapacity().modifyMult(HULLMOD_ID, m);
+        ArmorGridAPI grid = ship.getArmorGrid();
+        if (grid == null) return;
+        float[][] cells = grid.getGrid();
+        for (int x = 0; x < cells.length; x++) {
+            for (int y = 0; y < cells[x].length; y++) grid.setArmorValue(x, y, cells[x][y] * m);
+        }
     }
 
     public static int shuttlesFor(HullSize size) {
@@ -530,6 +598,7 @@ public class BoardingCombatPlugin extends BaseEveryFrameCombatPlugin {
     /** Launches a wave and returns the message line. Caller checks range and cooldown. */
     public String launchWave(ShipAPI source, ShipAPI target) {
         readyPool();
+        if (ThreatBoarding.isThreat(source)) return launchFragments(source, target);
         if (!hasBay(source)) return source.getName() + " has no Boarding Shuttle Bay.";
         if (!isBoardable(target, source.getOwner())) return "That ship cannot be boarded.";
         Fight underAttack = fights.get(source);
@@ -558,6 +627,83 @@ public class BoardingCombatPlugin extends BaseEveryFrameCombatPlugin {
                 + " " + troops + "). " + aboard + " " + troops + " left aboard.";
     }
 
+    /** A Threat ship's wave: craft carrying fragments of its swarm (ThreatBoarding). */
+    private String launchFragments(ShipAPI source, ShipAPI target) {
+        if (!isBoardable(target, source.getOwner())) return "That ship cannot be boarded.";
+        int per = Math.max(1, TcoSettings.threatFragmentsPerCraft);
+        int count = Math.min(shuttlesPerWave(source), ThreatBoarding.spare(source) / per);
+        if (count <= 0) return source.getName() + " has too few fragments to send.";
+        int launched = 0;
+        int sent = 0;
+        for (int i = 0; i < count; i++) {
+            int carried = launchFragmentCraft(source, target, per);
+            if (carried <= 0) break;
+            launched++;
+            sent += carried;
+        }
+        if (launched == 0) return "No fragments could be sent.";
+        cooldowns.put(source, Math.max(1f, TcoSettings.threatWaveCooldown));
+        return source.getName() + " sent " + sent + " fragments to board " + target.getName() + ".";
+    }
+
+    /** One invisible craft wearing a swarm of fragments; how many fragments it carries (0: none launched). */
+    private int launchFragmentCraft(ShipAPI source, ShipAPI target, int wanted) {
+        try {
+            CombatFleetManagerAPI fleet = engine.getFleetManager(source.getOwner());
+            boolean quiet = fleet.isSuppressDeploymentMessages();
+            fleet.setSuppressDeploymentMessages(true);
+            ShipAPI ship;
+            try {
+                Vector2f from = source.getLocation();
+                Vector2f to = target.getLocation();
+                float facing = (float) Math.toDegrees(Math.atan2(to.y - from.y, to.x - from.x));
+                double spread = random.nextDouble() * Math.PI * 2.0;
+                float out = source.getCollisionRadius() * 0.5f;
+                Vector2f at = new Vector2f(from.x + (float) Math.cos(spread) * out, from.y + (float) Math.sin(spread) * out);
+                ship = fleet.spawnShipOrWing(FRAGMENT_WING, at, facing);
+            } finally {
+                fleet.setSuppressDeploymentMessages(quiet);
+            }
+            if (ship.getWing() != null) {
+                ship.getWing().setSourceShip(source);
+                fleet.removeDeployed(ship.getWing(), false);
+            } else {
+                fleet.removeDeployed(ship, false);
+            }
+            // The swarm is what shows
+            ship.setDoNotRender(true);
+            ship.setExplosionScale(0f);
+            ship.setHulkChanceOverride(0f);
+            ship.setCustomData(AmmoRules.SHUTTLE_KEY, Boolean.TRUE);
+            ship.setCustomData("tco_ammo_done", Boolean.TRUE);
+            ship.setCollisionClass(CollisionClass.FIGHTER);
+            ship.setInvalidTransferCommandTarget(true);
+            ship.setHoldFire(true);
+            int carried = ThreatBoarding.fill(ship, source, wanted);
+            if (carried <= 0) {
+                engine.removeEntity(ship);
+                return 0;
+            }
+            ThreatBoarding.weaken(ship, carried);
+
+            Craft craft = new Craft();
+            craft.ship = ship;
+            craft.ai = new ShuttleAI(ship);
+            craft.source = source;
+            craft.target = target;
+            craft.marines = carried;
+            craft.fragments = true;
+            craft.playerSide = isPlayerShip(source);
+            ship.setShipAI(craft.ai);
+            craft.ai.flyTo(target.getLocation());
+            crafts.add(craft);
+            return carried;
+        } catch (RuntimeException e) {
+            Global.getLogger(BoardingCombatPlugin.class).warn("TCO: could not launch Threat fragments", e);
+            return 0;
+        }
+    }
+
     private boolean launch(ShipAPI source, ShipAPI target, int marines) {
         try {
             CombatFleetManagerAPI fleet = engine.getFleetManager(source.getOwner());
@@ -584,6 +730,7 @@ public class BoardingCombatPlugin extends BaseEveryFrameCombatPlugin {
             ship.setInvalidTransferCommandTarget(true);
             ship.getMutableStats().getMaxSpeed().modifyMult(HULLMOD_ID, TcoSettings.boardingShuttleSpeedMult);
             ship.getMutableStats().getAcceleration().modifyMult(HULLMOD_ID, TcoSettings.boardingShuttleSpeedMult);
+            toughen(ship);
             // High-Capacity Shuttles
             if (source.getVariant() != null && source.getVariant().hasHullMod(ShuttleBayUpgrade.HIGH_CAPACITY)
                     && ship.getArmorGrid() != null) {
@@ -623,7 +770,7 @@ public class BoardingCombatPlugin extends BaseEveryFrameCombatPlugin {
     @Override
     public void advance(float amount, List<InputEventAPI> events) {
         if (engine != null && engine.isPaused()) amount = 0f;
-        if (engine == null || Global.getCurrentState() != GameState.COMBAT) return;
+        if (engine == null || !TcoSettings.boardingEnabled || Global.getCurrentState() != GameState.COMBAT) return;
         readyPool();
 
         if (engine.isCombatOver()) {
@@ -741,7 +888,17 @@ public class BoardingCombatPlugin extends BaseEveryFrameCombatPlugin {
                         craft.legTime = 0f;
                     } else {
                         craft.ai.flyTo(craft.target.getLocation());
-                        if (isNear(ship, craft.target)) beginLanding(craft, craft.target, Leg.LANDING);
+                        if (isNear(ship, craft.target)) {
+                            if (craft.fragments) {
+                                // Fragments pour straight in
+                                joinFight(craft.target, craft.marines, craft);
+                                craft.marines = 0;
+                                engine.removeEntity(ship);
+                                it.remove();
+                            } else {
+                                beginLanding(craft, craft.target, Leg.LANDING);
+                            }
+                        }
                     }
                     break;
 
@@ -772,7 +929,15 @@ public class BoardingCombatPlugin extends BaseEveryFrameCombatPlugin {
                         it.remove();
                     } else {
                         craft.ai.flyTo(craft.source.getLocation());
-                        if (isNear(ship, craft.source)) beginLanding(craft, craft.source, Leg.LANDING_HOME);
+                        if (isNear(ship, craft.source)) {
+                            if (craft.fragments) {
+                                giveBack(craft);
+                                engine.removeEntity(ship);
+                                it.remove();
+                            } else {
+                                beginLanding(craft, craft.source, Leg.LANDING_HOME);
+                            }
+                        }
                     }
                     break;
 
@@ -852,6 +1017,13 @@ public class BoardingCombatPlugin extends BaseEveryFrameCombatPlugin {
             }
             fight.crewStart = crewOf(target);
             fight.crew = fight.crewStart * condition;
+            if (!fight.droidDefenders && MilitiaLockers.has(target) && fight.crew > 0f) {
+                // Armed crew fight as militia instead of as bystanders
+                fight.militia = fight.crew * TcoSettings.militiaStrength;
+                fight.militiaStart = fight.militia;
+                fight.defenders += fight.militia;
+                fight.crew = 0f;
+            }
             if (!fight.droidDefenders) {
                 fight.secDroids = securityLeft(target);
                 fight.defenders += fight.secDroids;
@@ -863,6 +1035,7 @@ public class BoardingCombatPlugin extends BaseEveryFrameCombatPlugin {
             fights.put(target, fight);
             String who = craft.droids ? "droids" : "marines";
             String guard = fight.droidDefenders ? Math.round(fight.defenders) + " defending droids"
+                    : fight.militia > 0f ? defenderCount(fight)
                     : Math.round(fight.defenders) + " marines and " + Math.round(fight.crew) + " crew";
             if (target.getOwner() == 0) {
                 message(target, "Enemy " + who + " have boarded " + target.getName() + "! " + guard + " defending.");
@@ -876,14 +1049,38 @@ public class BoardingCombatPlugin extends BaseEveryFrameCombatPlugin {
             playerInvolved += marines;
         }
         if (craft.droids) fight.droidAttackers += marines;
+        if (craft.fragments) fight.fragmentAttackers += marines;
         if (craft.playerSide) fight.playerSide += marines;
         if (fight.log.isEmpty()) {
-            tell(fight, defenderCount(fight) + (fight.droidDefenders ? "" : " and " + Math.round(fight.crew) + " crew")
+            tell(fight, defenderCount(fight) + (fight.droidDefenders || fight.militia > 0f ? "" : " and " + Math.round(fight.crew) + " crew")
                     + " defending (" + fight.qualityName + ", " + fight.layoutName + ", captain " + fight.captain + ").", 0);
         }
         tell(fight, marines + " " + (craft.droids ? "droids" : "marines") + " landed.", 1);
+        if (BreachingCharges.has(craft.source)) breach(fight, craft);
         Float sent = fight.sources.get(craft.source);
         fight.sources.put(craft.source, (sent == null ? 0f : sent) + marines);
+    }
+
+    /**
+     * Breaching Charges: the docking shuttle blows its way in, damaging the hull (never below breachHullFloor of it,
+     * so the prize survives). A ship's first wave onto this target then attacks harder for breachSeconds.
+     */
+    private void breach(Fight fight, Craft craft) {
+        ShipAPI target = fight.ship;
+        Vector2f at = craft.ship != null ? new Vector2f(craft.ship.getLocation()) : new Vector2f(target.getLocation());
+        float floor = target.getMaxHitpoints() * TcoSettings.breachHullFloor;
+        float hull = target.getHitpoints();
+        if (TcoSettings.breachHullDamage > 0f && hull > floor) {
+            target.setHitpoints(Math.max(floor, hull - TcoSettings.breachHullDamage));
+            CombatEngineAPI engine = Global.getCombatEngine();
+            engine.spawnExplosion(at, target.getVelocity(), new Color(255, 160, 80), 45f, 0.5f);
+            engine.addHitParticle(at, target.getVelocity(), 70f, 1f, 0.2f, new Color(255, 220, 160));
+            Global.getSoundPlayer().playSound("explosion_from_damage", 1.2f, 0.5f, at, target.getVelocity());
+        }
+        if (craft.source != null && fight.breachedBy.add(craft.source) && TcoSettings.breachSeconds > 0f) {
+            fight.breachUntil = Math.max(fight.breachUntil, fight.time + TcoSettings.breachSeconds);
+            tell(fight, "Breaching charges blow the hatches: the boarders storm in.", 1);
+        }
     }
 
     private void attackersLose(Fight fight, float losses) {
@@ -893,11 +1090,13 @@ public class BoardingCombatPlugin extends BaseEveryFrameCombatPlugin {
         float kept = Math.max(0f, fight.attackers) / before;
         fight.playerShare = Math.max(0f, fight.playerShare * kept);
         fight.droidAttackers = Math.max(0f, fight.droidAttackers * kept);
+        fight.fragmentAttackers = Math.max(0f, fight.fragmentAttackers * kept);
         fight.playerSide = Math.max(0f, fight.playerSide * kept);
         for (Map.Entry<ShipAPI, Float> entry : fight.sources.entrySet()) entry.setValue(entry.getValue() * kept);
     }
 
     private static String attackerWord(Fight fight) {
+        if (fight.fragmentAttackers >= fight.attackers - 0.5f && fight.fragmentAttackers >= 0.5f) return "fragments";
         if (fight.droidAttackers < 0.5f) return "marines";
         if (fight.droidAttackers >= fight.attackers - 0.5f) return "droids";
         return "boarders";
@@ -909,9 +1108,20 @@ public class BoardingCombatPlugin extends BaseEveryFrameCombatPlugin {
 
     private static String defenderCount(Fight fight) {
         int droids = Math.round(Math.min(fight.secDroids, fight.defenders));
-        int rest = Math.round(fight.defenders) - droids;
-        if (droids <= 0) return Math.round(fight.defenders) + " " + defenderWord(fight);
-        return rest + " marines and " + droids + " security droids";
+        // Militia are counted in people, half a marine each
+        int militia = Math.round(fight.militia / Math.max(0.01f, TcoSettings.militiaStrength));
+        int marines = Math.max(0, Math.round(fight.defenders - fight.secDroids - fight.militia));
+        if (droids <= 0 && militia <= 0) return Math.round(fight.defenders) + " " + defenderWord(fight);
+        List<String> parts = new ArrayList<String>();
+        if (marines > 0 || (droids <= 0 && militia <= 0)) parts.add(marines + " marines");
+        if (militia > 0) parts.add(militia + " militia");
+        if (droids > 0) parts.add(droids + " security droids");
+        StringBuilder text = new StringBuilder();
+        for (int i = 0; i < parts.size(); i++) {
+            if (i > 0) text.append(i == parts.size() - 1 ? " and " : ", ");
+            text.append(parts.get(i));
+        }
+        return text.toString();
     }
 
     private void updateFights(float amount) {
@@ -952,6 +1162,9 @@ public class BoardingCombatPlugin extends BaseEveryFrameCombatPlugin {
             // Droids hit harder
             float droidShare = fight.attackers > 0f ? Math.min(1f, fight.droidAttackers / fight.attackers) : 0f;
             attack *= 1f + (TcoSettings.droidStrength - 1f) * droidShare;
+            // Threat fragments are weak one by one
+            float fragmentShare = fight.attackers > 0f ? Math.min(1f, fight.fragmentAttackers / fight.attackers) : 0f;
+            attack *= 1f + (TcoSettings.threatFragmentStrength - 1f) * fragmentShare;
             if (fight.droidDefenders) defence *= TcoSettings.droidStrength;
             // Each section taken beyond the entry adds to the attack
             if (fight.decks != null && fight.decks.size() > 1) {
@@ -962,22 +1175,34 @@ public class BoardingCombatPlugin extends BaseEveryFrameCombatPlugin {
             defence *= fight.quality * fight.layoutMult;
             attack /= fight.quality;
             if (fight.time < fight.armoryUntil) attack *= 1.3f;
+            if (fight.time < fight.breachUntil) attack *= 1f + TcoSettings.breachAttackBonus;
             if (fight.time < fight.ambushUntil) defence *= 2f;
             // Orders and experience
             attack *= orderAttack(fight.order) * (1f + attackerXp(fight) * TcoSettings.boardingXpAttack);
             defence *= orderLosses(fight.order) * (1f - attackerXp(fight) * TcoSettings.boardingXpLosses);
             float defXp = fight.droidDefenders ? 0f : fight.playerDefends ? playerXpLevel() : TcoSettings.aiMarineXpLevel;
-            // Security droids: weaker, no experience
+            // Security droids: weaker, no experience; militia: no experience (their strength is in their count)
             float secShare = fight.defenders > 0f ? Math.min(1f, fight.secDroids / fight.defenders) : 0f;
-            defXp *= 1f - secShare;
+            float militiaShare = fight.defenders > 0f ? Math.min(1f - secShare, fight.militia / fight.defenders) : 0f;
+            defXp *= Math.max(0f, 1f - secShare - militiaShare);
             defence *= 1f - secShare + secShare * TcoSettings.securityDroidStrength;
             defence *= 1f + defXp * TcoSettings.boardingXpAttack;
             attack *= 1f - defXp * TcoSettings.boardingXpLosses;
 
             if (fight.defenders > 0f) {
+                float before = fight.defenders;
+                float droidsBefore = fight.secDroids;
                 fight.defenders -= attack;
                 // Security droids take losses first
                 fight.secDroids = Math.max(0f, fight.secDroids - attack);
+                // Then militia and marines in proportion
+                float rest = Math.max(0f, attack - droidsBefore);
+                float people = before - droidsBefore;
+                if (fight.militia > 0f && people > 0f) {
+                    float lost = Math.min(fight.militia, rest * fight.militia / people);
+                    fight.militia -= lost;
+                    if (fight.playerDefends) militiaLost += lost / Math.max(0.01f, TcoSettings.militiaStrength);
+                }
                 // Outnumbered remnants may surrender
                 if (fight.defenders >= 0.5f && fight.defenders <= fight.defendersStart * 0.25f
                         && fight.attackers >= TcoSettings.boardingRoutRatio * defending
@@ -996,7 +1221,10 @@ public class BoardingCombatPlugin extends BaseEveryFrameCombatPlugin {
             }
             attackersLose(fight, defence);
             fight.secDroids = Math.max(0f, Math.min(fight.secDroids, fight.defenders));
-            if (fight.playerDefends) shipPools.put(keyOf(ship), Math.max(0, Math.round(fight.defenders - fight.secDroids)));
+            fight.militia = Math.max(0f, Math.min(fight.militia, fight.defenders - fight.secDroids));
+            if (fight.playerDefends) {
+                shipPools.put(keyOf(ship), Math.max(0, Math.round(fight.defenders - fight.secDroids - fight.militia)));
+            }
             takeDecks(fight);
             fight.time += TICK;
             if (fight.time >= fight.nextEvent) {
@@ -1069,7 +1297,7 @@ public class BoardingCombatPlugin extends BaseEveryFrameCombatPlugin {
 
     private float attackerXp(Fight fight) {
         if (fight.attackers <= 0f) return 0f;
-        float marines = Math.max(0f, fight.attackers - fight.droidAttackers);
+        float marines = Math.max(0f, fight.attackers - fight.droidAttackers - fight.fragmentAttackers);
         if (marines <= 0f) return 0f;
         float player = Math.min(marines, fight.playerShare);
         return (player * playerXpLevel() + (marines - player) * TcoSettings.aiMarineXpLevel) / fight.attackers;
@@ -1438,7 +1666,7 @@ public class BoardingCombatPlugin extends BaseEveryFrameCombatPlugin {
     }
 
     public static String orderTip(BoardOrder order) {
-        if (order == BoardOrder.WITHDRAW) return "Pull the boarders out by shuttle (after a few seconds; click again to cancel).";
+        if (order == BoardOrder.WITHDRAW) return "Pull the boarders out after a few seconds. Click again to cancel.";
         return orderHelp(order);
     }
 
@@ -1461,7 +1689,7 @@ public class BoardingCombatPlugin extends BaseEveryFrameCombatPlugin {
         switch (order) {
             case ASSAULT: return "Fast, heavy losses.";
             case METHODICAL: return "Slow, few losses, less damage to the prize.";
-            case SABOTAGE: return "Wreck its guns and reactor instead of taking it.";
+            case SABOTAGE: return "Wreck its guns and reactor instead of capturing it.";
             default: return "Balanced.";
         }
     }
@@ -1532,7 +1760,7 @@ public class BoardingCombatPlugin extends BaseEveryFrameCombatPlugin {
         boolean byPlayer = ship.getOwner() == 1 && fight.playerSide >= fight.attackers * 0.5f;
         sendHome(fight);
         if (!byPlayer) {
-            message(ship, ship.getName() + "'s AI core has been shut down. It is drifting, out of the fight.");
+            message(ship, ship.getName() + "'s AI core has been shut down. It's out of the fight.");
             disableAutomated(ship);
             return;
         }
@@ -1548,10 +1776,10 @@ public class BoardingCombatPlugin extends BaseEveryFrameCombatPlugin {
         }
         if (playerHasAutomatedSkill()) {
             takeControl(ship);
-            message(ship, ship.getName() + " is yours: its systems answer to your fleet now.");
+            message(ship, ship.getName() + " is yours now.");
         } else {
             disableAutomated(ship);
-            message(ship, ship.getName() + " is disabled and drifting. Without the Automated Ships skill it can't be put to use.");
+            message(ship, ship.getName() + " is disabled. You need the Automated Ships skill to use it.");
         }
     }
 
@@ -1616,6 +1844,7 @@ public class BoardingCombatPlugin extends BaseEveryFrameCombatPlugin {
             ship.setInvalidTransferCommandTarget(true);
             ship.getMutableStats().getMaxSpeed().modifyMult(HULLMOD_ID, TcoSettings.boardingShuttleSpeedMult);
             ship.getMutableStats().getAcceleration().modifyMult(HULLMOD_ID, TcoSettings.boardingShuttleSpeedMult);
+            toughen(ship);
             Craft craft = new Craft();
             craft.ship = ship;
             craft.ai = new ShuttleAI(ship);
@@ -1691,7 +1920,27 @@ public class BoardingCombatPlugin extends BaseEveryFrameCombatPlugin {
 
     // ------------------------------------------------------------------ capture
 
+    /** Taken by Threat fragments: everyone aboard is killed and the ship left drifting, of use to no one. */
+    private void scour(Fight fight) {
+        ShipAPI ship = fight.ship;
+        boolean playerAboard = ship.getOwner() == 0 && ejection == null && RtsCombatPlugin.playerAboard(engine, ship);
+        FleetMemberAPI member = ship.getFleetMember();
+        if (isPlayerShip(ship) && member != null) {
+            // Its marines died with the crew
+            lostShips.add(keyOf(ship));
+            float crew = member.getCrewComposition() != null ? member.getCrewComposition().getCrew() : member.getMinCrew();
+            threatCrewKilled += Math.max(0f, crew);
+        }
+        message(ship, "Threat fragments have killed everyone aboard " + ship.getName() + " and left it drifting.");
+        disableAutomated(ship);
+        if (playerAboard) eject(ship);
+    }
+
     private void capture(Fight fight) {
+        if (fight.fragmentAttackers >= fight.attackers * 0.5f) {
+            scour(fight);
+            return;
+        }
         ShipAPI ship = fight.ship;
         int newOwner = ship.getOwner() == 0 ? 1 : 0;
         boolean playerAboard = newOwner == 1 && ejection == null
@@ -1744,7 +1993,7 @@ public class BoardingCombatPlugin extends BaseEveryFrameCombatPlugin {
                 capturedThisBattle.add(member);
                 BoardingResults.captured.add(member);
             }
-            message(ship, ship.getName() + " has surrendered to the boarding party and is leaving the battle.");
+            message(ship, ship.getName() + " has surrendered and is leaving the battle.");
         }
     }
 
@@ -1812,7 +2061,30 @@ public class BoardingCombatPlugin extends BaseEveryFrameCombatPlugin {
     private float securityLeft(ShipAPI ship) {
         if (!SecurityForge.has(ship) || isAutomated(ship)) return 0f;
         Float left = securityDroids.get(ship);
-        return left != null ? left : SecurityForge.droidsFor(ship.getHullSize());
+        if (left != null) return left;
+        // The player's ships start with what the forge has rebuilt since their last fight
+        FleetMemberAPI member = ship.getFleetMember();
+        if (isPlayerShip(ship) && member != null && engine.isInCampaign() && !engine.isSimulation()) {
+            float now = SecurityDroids.current(member);
+            securityDroids.put(ship, now);
+            return now;
+        }
+        return SecurityForge.droidsFor(ship.getHullSize());
+    }
+
+    /** Droids left on the player's forge ships go into the save; the forge rebuilds them from there. */
+    private void storeSecurityDroids() {
+        if (!engine.isInCampaign() || engine.isSimulation()) return;
+        // Fights still going count what's left now
+        for (Fight fight : fights.values()) {
+            if (SecurityForge.has(fight.ship)) securityDroids.put(fight.ship, Math.max(0f, Math.min(fight.secDroids, fight.defenders)));
+        }
+        for (Map.Entry<ShipAPI, Float> entry : securityDroids.entrySet()) {
+            ShipAPI ship = entry.getKey();
+            FleetMemberAPI member = ship.getFleetMember();
+            if (member == null || !isPlayerShip(ship) || !SecurityForge.has(ship)) continue;
+            SecurityDroids.store(member, ship.isAlive() && !ship.isHulk() ? entry.getValue() : 0f);
+        }
     }
 
     private void keepGarrison(Fight fight) {
@@ -1832,6 +2104,46 @@ public class BoardingCombatPlugin extends BaseEveryFrameCombatPlugin {
         if (expectedDefence(target) < wave * 0.5f) score += 1f;
         if (alreadyCommitted(target, side) > 0f) score += 1.5f;
         return score;
+    }
+
+    /**
+     * AI Threat ships board on their own, once a second: wave after wave of fragments at the nearest weak enemy in
+     * range, without waiting for a winning margin, until about three times its expected defence is on the way or aboard.
+     */
+    private void threatBoarding() {
+        if (!TcoSettings.threatBoarding) return;
+        int per = Math.max(1, TcoSettings.threatFragmentsPerCraft);
+        for (ShipAPI source : engine.getShips()) {
+            if (!ThreatBoarding.isThreat(source) || isPlayerShip(source)) continue;
+            if (source.getOwner() != 0 && source.getOwner() != 1) continue;
+            if (!source.isAlive() || source.isHulk() || source.isRetreating() || cooldownOf(source) > 0f) continue;
+            if (source.getCustomData().containsKey(CAPTURED_KEY) || DeathThroes.isDying(source)) continue;
+            int spare = ThreatBoarding.spare(source);
+            if (spare < per) continue;
+            float wave = Math.min(shuttlesPerWave(source), spare / per) * per * TcoSettings.threatFragmentStrength;
+            ShipAPI best = null;
+            float bestScore = 0f;
+            for (ShipAPI target : engine.getShips()) {
+                if (!isBoardable(target, source.getOwner()) || isProtected(target)) continue;
+                if (!AiAwareness.knowsShip(engine, source, target)) continue;
+                float dist = distance(source.getLocation(), target.getLocation())
+                        - source.getCollisionRadius() - target.getCollisionRadius();
+                if (dist > TcoSettings.boardingLaunchRange) continue;
+                float committed = alreadyCommitted(target, source.getOwner()) * TcoSettings.threatFragmentStrength;
+                if (committed > expectedDefence(target) * 3f) continue;
+                float score = (1f + weakness(target, wave, source.getOwner())) * 1000f / (Math.max(0f, dist) + 500f);
+                if (score > bestScore) {
+                    bestScore = score;
+                    best = target;
+                }
+            }
+            if (best == null) continue;
+            launchWave(source, best);
+            if (best.getOwner() == 0 && !warned.containsKey(best)) {
+                warned.put(best, 15f);
+                message(best, "Threat fragments are swarming towards " + best.getName() + "!");
+            }
+        }
     }
 
     private boolean isProtected(ShipAPI target) {
@@ -1957,6 +2269,7 @@ public class BoardingCombatPlugin extends BaseEveryFrameCombatPlugin {
      * The player's ships only board on orders.
      */
     private void aiBoarding() {
+        threatBoarding();
         if (!TcoSettings.aiBoardingEnabled) return;
         int per = Math.max(1, TcoSettings.marinesPerShuttle);
         for (ShipAPI source : engine.getShips()) {
@@ -1973,6 +2286,8 @@ public class BoardingCombatPlugin extends BaseEveryFrameCombatPlugin {
             float bestScore = 0f;
             for (ShipAPI target : engine.getShips()) {
                 if (!isBoardable(target, source.getOwner()) || isProtected(target)) continue;
+                // Only ships its side has found
+                if (!AiAwareness.knowsShip(engine, source, target)) continue;
                 float dist = distance(source.getLocation(), target.getLocation())
                         - source.getCollisionRadius() - target.getCollisionRadius();
                 if (dist > TcoSettings.boardingLaunchRange) continue;
@@ -2005,7 +2320,7 @@ public class BoardingCombatPlugin extends BaseEveryFrameCombatPlugin {
             if (fight.attackers < 1f || !boarded.isAlive()) continue;
             int side = boarded.getOwner() == 0 ? 1 : 0;
             for (ShipAPI ship : engine.getShips()) {
-                if (ship.getOwner() != side || !ship.isAlive() || ship.isHulk() || ship == engine.getPlayerShip()) continue;
+                if (ship.getOwner() != side || !ship.isAlive() || ship.isHulk() || AiUtil.playerFlying(engine, ship)) continue;
                 if (RtsCombatPlugin.attacking(engine, ship, boarded)) continue;
                 for (WeaponGroupAPI group : ship.getWeaponGroupsCopy()) {
                     for (WeaponAPI weapon : group.getWeaponsCopy()) {

@@ -33,6 +33,7 @@ import com.fs.starfarer.api.input.InputEventAPI;
 
 import tco.Msg;
 import tco.TcoSettings;
+import tco.hullmods.DamageControl;
 import tco.ai.SupportRoles;
 import tco.ammo.AmmoRules;
 import tco.ammo.ShuttleAI;
@@ -262,6 +263,7 @@ public class RepairCombatPlugin extends BaseEveryFrameCombatPlugin {
             engineTimer = ENGINE_SCAN_INTERVAL;
             makeEngineDamageStick();
             relightRepairedParts(ENGINE_SCAN_INTERVAL);
+            fieldPatch(ENGINE_SCAN_INTERVAL);
         }
 
         if (!recentlyPatched.isEmpty()) {
@@ -309,6 +311,35 @@ public class RepairCombatPlugin extends BaseEveryFrameCombatPlugin {
                     nozzle.disable(true);
                     repairedParts.remove(nozzle);
                     permanent++;
+                }
+            }
+        }
+    }
+
+    // Automated Repair Unit: seconds spent on the one field patch, and ships that have used it this battle
+    private final Map<ShipAPI, Float> patchProgress = new HashMap<ShipAPI, Float>();
+    private final java.util.Set<ShipAPI> patched = new java.util.HashSet<ShipAPI>();
+
+    /**
+     * Ships with the game's Automated Repair Unit patch one destroyed weapon or engine back per battle, with no
+     * tender, after repairUnitPatchSeconds with something broken.
+     */
+    private void fieldPatch(float elapsed) {
+        if (TcoSettings.repairUnitPatchSeconds <= 0f) return;
+        for (ShipAPI ship : engine.getShips()) {
+            if (patched.contains(ship) || !DamageControl.has(ship) || !ship.isAlive() || ship.isHulk() || ship.isFighter()) continue;
+            if (brokenParts(ship) <= 0) continue;
+            Float done = patchProgress.get(ship);
+            float now = (done == null ? 0f : done) + elapsed;
+            if (now < TcoSettings.repairUnitPatchSeconds) {
+                patchProgress.put(ship, now);
+                continue;
+            }
+            patchProgress.remove(ship);
+            if (fixOnePart(ship)) {
+                patched.add(ship);
+                if (ship.getOwner() == 0) {
+                    Msg.about(engine, ship, ship.getName() + "'s repair crews patched a destroyed part back into service.");
                 }
             }
         }

@@ -45,12 +45,13 @@ public final class RadarSetup {
         }
         if (!texts) {
             texts = true;
-            append("ecm", "TCO: also jams incoming radar missiles, " + TcoSettings.ecmFrigate + "/" + TcoSettings.ecmDestroyer
+            append("ecm", "TCO: also jams up to " + TcoSettings.ecmFrigate + "/" + TcoSettings.ecmDestroyer
                     + "/" + TcoSettings.ecmCruiser + "/" + TcoSettings.ecmCapital
-                    + " at a time by hull size, drawing reactor power for each. Jammed missiles may be spoofed and lose their"
-                    + " target; small ships are easier to protect than big ones.");
-            append("eccm", "TCO: radar missiles fired by this ship are " + Math.round((1f - TcoSettings.eccmSpoofMult) * 100f)
-                    + " percent less likely to be spoofed by enemy ECM jamming.");
+                    + " incoming radar missiles at once, by hull size, using reactor power. Jammed missiles can lose their"
+                    + " target, more easily against small ships. It can also scramble the radar of one enemy ship within "
+                    + Math.round(TcoSettings.spotRangeEcm) + ", if it's close enough to burn through.");
+            append("eccm", "TCO: this ship's radar missiles are " + Math.round((1f - TcoSettings.eccmSpoofMult) * 100f)
+                    + " percent less likely to be spoofed by enemy ECM.");
         }
     }
 

@@ -70,8 +70,8 @@ public class AbandonedOutposts extends BaseEveryFrameCombatPlugin {
                         true, false, null, false);
             }
             Msg.send(engine, Msg.PLAYER,
-                    side == 0 ? "With no ships left to cover them, your outposts' crews scuttle them."
-                            : "With no ships left to cover them, the enemy scuttles their outposts.",
+                    side == 0 ? "With no ships left to defend them, your outposts are scuttled."
+                            : "With no ships left to defend them, the enemy scuttles their outposts.",
                     "outposts-scuttled-" + side, 5f);
             emptyFor[side] = 0f;
         }

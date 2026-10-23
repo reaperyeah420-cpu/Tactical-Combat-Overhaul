@@ -33,7 +33,14 @@ import com.fs.starfarer.api.util.Misc;
 
 import tco.InputKeys;
 import tco.TcoSettings;
+import tco.Typing;
+import tco.ammo.AmmoRules;
+import tco.hullmods.CombatInformationCenter;
+import tco.hullmods.MilitiaLockers;
+import tco.hullmods.SecurityForge;
+import tco.repair.RepairCombatPlugin;
 import tco.rts.Stance;
+import tco.tug.TowCombatPlugin;
 
 /**
  * Campaign screen for per-ship marine targets and RTS stances, as a list or a card grid.
@@ -42,16 +49,16 @@ import tco.rts.Stance;
 public final class MarineScreen {
 
     private static final float WIDTH = 1040f;
-    private static final float HEIGHT = 660f;
-    private static final float TOP = 130f;
+    private static final float HEIGHT = 700f;
+    private static final float TOP = 172f;
     private static final float LIST_TOP = TOP + 16f;
     private static final float ROW = 46f;
     private static final float CARD_W = 248f;
-    private static final float CARD_H = 186f;
+    private static final float CARD_H = 200f;
     private static final int CARD_COLS = 4;
 
     private enum Sort {
-        FLEET("Fleet order"), SIZE("Size"), POINTS("Deployment points");
+        FLEET("Fleet order"), ROLE("Role"), SIZE("Size"), POINTS("Deployment points");
 
         final String label;
 
@@ -122,7 +129,7 @@ public final class MarineScreen {
         @Override
         public void advance(float amount) {
             TcoSettings.load();
-            boolean down = InputKeys.isDown(TcoSettings.keyMarineScreen);
+            boolean down = InputKeys.isDown(TcoSettings.keyMarineScreen) && !Typing.active();
             boolean pressed = down && !wasDown;
             wasDown = down;
             if (!pressed || Global.getCurrentState() != GameState.CAMPAIGN) return;
@@ -179,15 +186,65 @@ public final class MarineScreen {
         MarineAllocation.Entry entry;
         int capacity;
         boolean automated;
+        ButtonAPI zero;
         ButtonAPI minusTen;
         ButtonAPI minusOne;
         ButtonAPI plusOne;
         ButtonAPI plusTen;
+        ButtonAPI max;
         ButtonAPI priority;
         ButtonAPI excluded;
         ButtonAPI stanceButton;
         LabelAPI target;
         LabelAPI assigned;
+    }
+
+    /** A support or command job a ship's hullmods give it, shown as a coloured tag. */
+    private enum Role {
+        CIC(CombatInformationCenter.ID, "[CIC]", new Color(90, 200, 255)),
+        AUX_CIC(CombatInformationCenter.AUX_ID, "[AUX CIC]", new Color(150, 175, 255)),
+        SUPPLY(AmmoRules.HULLMOD_ID, "[SUPPLY]", new Color(255, 200, 70)),
+        TENDER(RepairCombatPlugin.HULLMOD_ID, "[TENDER]", new Color(110, 230, 120)),
+        BOARDING(BoardingCombatPlugin.HULLMOD_ID, "[BOARDING]", new Color(255, 110, 90)),
+        TUG(TowCombatPlugin.HULLMOD_ID, "[TUG]", new Color(210, 160, 255));
+
+        final String hullmod;
+        final String tag;
+        final Color color;
+
+        Role(String hullmod, String tag, Color color) {
+            this.hullmod = hullmod;
+            this.tag = tag;
+            this.color = color;
+        }
+    }
+
+    static List<Role> rolesOf(FleetMemberAPI member) {
+        List<Role> roles = new ArrayList<Role>();
+        if (member.getVariant() == null) return roles;
+        for (Role role : Role.values()) {
+            if (member.getVariant().hasHullMod(role.hullmod)) roles.add(role);
+        }
+        return roles;
+    }
+
+    static String tagsOf(List<Role> roles) {
+        StringBuilder text = new StringBuilder();
+        for (Role role : roles) text.append(text.length() == 0 ? "" : " ").append(role.tag);
+        return text.toString();
+    }
+
+    /** Colours each tag in a label that contains them. */
+    static void colourTags(LabelAPI label, List<Role> roles) {
+        if (roles.isEmpty()) return;
+        String[] tags = new String[roles.size()];
+        Color[] colors = new Color[roles.size()];
+        for (int i = 0; i < roles.size(); i++) {
+            tags[i] = roles.get(i).tag;
+            colors[i] = roles.get(i).color;
+        }
+        label.setHighlight(tags);
+        label.setHighlightColors(colors);
     }
 
     static boolean isAutomated(FleetMemberAPI member) {
@@ -203,6 +260,23 @@ public final class MarineScreen {
             droids *= 1f + TcoSettings.droidSModBonus;
         }
         return Math.round(droids);
+    }
+
+    static boolean hasForge(FleetMemberAPI member) {
+        return member.getVariant() != null && member.getVariant().hasHullMod(SecurityForge.ID);
+    }
+
+    /** "droids now/full (rebuilding)" for a Security Forge ship, after the prefix; empty otherwise. */
+    static String securityText(FleetMemberAPI member, String prefix) {
+        if (!hasForge(member)) return "";
+        int now = Math.round(SecurityDroids.current(member));
+        int full = SecurityDroids.full(member);
+        return prefix + "droids " + now + "/" + full + (now < full ? " (rebuilding)" : "");
+    }
+
+    /** Crew who would fight boarders as militia (Militia Lockers), else 0. */
+    static int militiaOf(FleetMemberAPI member) {
+        return MilitiaLockers.has(member) ? Math.round(member.getMinCrew()) : 0;
     }
 
     private static class Delegate implements CustomDialogDelegate, CustomUIPanelPlugin {
@@ -222,7 +296,8 @@ public final class MarineScreen {
         private ButtonAPI viewButton;
         private ButtonAPI fillButton;
         private ButtonAPI spreadButton;
-        private ButtonAPI clearButton;
+        private ButtonAPI noneButton;
+        private ButtonAPI resetButton;
 
         Delegate(InteractionDialogAPI dialog, Dialog host, View view) {
             this.dialog = dialog;
@@ -247,6 +322,10 @@ public final class MarineScreen {
             Collections.sort(list, new Comparator<FleetMemberAPI>() {
                 @Override
                 public int compare(FleetMemberAPI a, FleetMemberAPI b) {
+                    if (sort == Sort.ROLE) {
+                        int byRole = roleRank(a) - roleRank(b);
+                        if (byRole != 0) return byRole;
+                    }
                     if (sort == Sort.SIZE) {
                         int bySize = b.getHullSpec().getHullSize().ordinal() - a.getHullSpec().getHullSize().ordinal();
                         if (bySize != 0) return bySize;
@@ -254,6 +333,11 @@ public final class MarineScreen {
                     return Float.compare(b.getDeploymentPointsCost(), a.getDeploymentPointsCost());
                 }
             });
+        }
+
+        private static int roleRank(FleetMemberAPI member) {
+            List<Role> roles = rolesOf(member);
+            return roles.isEmpty() ? Role.values().length : roles.get(0).ordinal();
         }
 
         @Override
@@ -267,25 +351,34 @@ public final class MarineScreen {
 
             place(list.addPara("Marines, droids and stances", Misc.getHighlightColor(), 0f), 10f, 8f, 400f);
             summary = place(list.addPara("", 0f), 10f, 30f, WIDTH - 30f);
-            place(list.addPara("Targets are what each ship should carry if there are enough marines; priority ships are filled"
-                    + " first. Leftovers are spread evenly. \"No marines\" ships only get some when every other ship is full."
-                    + " Automated ships carry droids, a fixed number. Stance is how a ship fights when it has no order in RTS mode.",
-                    gray, 0f), 10f, 48f, WIDTH - 30f);
+            // Tags and how many ships have each, right of the buttons
+            LabelAPI roleLine = list.addPara(roleCounts(), gray, 0f);
+            roleLine.getPosition().setSize(WIDTH - 710f, 40f);
+            roleLine.getPosition().inTL(690f, 112f);
+            colourTags(roleLine, presentRoles());
+            LabelAPI help = list.addPara("Target is how many marines a ship carries. Grey targets are automatic: boarding"
+                    + " ships fill up first and the rest share what's left. A target you set is a cap. Priority ships fill first"
+                    + " when marines run short; \"No marines\" ships only get leftovers. Stance is how a ship fights in RTS mode"
+                    + " when it has no orders.", gray, 0f);
+            help.getPosition().setSize(WIDTH - 30f, 60f);
+            help.getPosition().inTL(10f, 48f);
 
-            // Controls
-            place(list.addPara("Sort:", gray, 0f), 10f, 96f, 40f);
+            // Controls: view on the first row, bulk changes on the second
+            place(list.addPara("Sort:", gray, 0f), 10f, 116f, 40f);
             float x = 50f;
             for (Sort sort : Sort.values()) {
                 float width = sort == Sort.POINTS ? 150f : 104f;
-                ButtonAPI button = button(list, sort.label, base, dark, bright, x, 92f, width);
+                ButtonAPI button = button(list, sort.label, base, dark, bright, x, 112f, width);
                 button.setChecked(sort == view.sort);
                 sortButtons.put(sort, button);
                 x += width + 4f;
             }
-            viewButton = button(list, view.grid ? "Show as list" : "Show as grid", base, dark, bright, x + 16f, 92f, 120f);
-            fillButton = button(list, "Fill boarding ships", base, dark, bright, WIDTH - 470f, 92f, 150f);
-            spreadButton = button(list, "Spread evenly", base, dark, bright, WIDTH - 314f, 92f, 120f);
-            clearButton = button(list, "Clear all", base, dark, bright, WIDTH - 190f, 92f, 90f);
+            viewButton = button(list, view.grid ? "Show as list" : "Show as grid", base, dark, bright, x + 16f, 112f, 120f);
+            place(list.addPara("All ships:", gray, 0f), 10f, 144f, 70f);
+            fillButton = button(list, "Fill boarding ships", base, dark, bright, 84f, 140f, 150f);
+            spreadButton = button(list, "Spread evenly", base, dark, bright, 238f, 140f, 120f);
+            noneButton = button(list, "No marines: all", base, dark, bright, 362f, 140f, 150f);
+            resetButton = button(list, "Reset to automatic", base, dark, bright, 516f, 140f, 150f);
 
             if (view.grid) layOutGrid(list, base, dark, bright, gray);
             else layOutList(list, base, dark, bright, gray);
@@ -297,33 +390,42 @@ public final class MarineScreen {
         private void layOutList(TooltipMakerAPI list, Color base, Color dark, Color bright, Color gray) {
             place(list.addPara("Ship", gray, 0f), 60f, LIST_TOP - 20f, 200f);
             place(list.addPara("Room", gray, 0f), 300f, LIST_TOP - 20f, 60f);
-            place(list.addPara("Target", gray, 0f), 428f, LIST_TOP - 20f, 60f);
-            place(list.addPara("Gets", gray, 0f), 780f, LIST_TOP - 20f, 80f);
-            place(list.addPara("Stance", gray, 0f), 900f, LIST_TOP - 20f, 100f);
+            place(list.addPara("Target", gray, 0f), 468f, LIST_TOP - 20f, 60f);
+            place(list.addPara("Gets", gray, 0f), 818f, LIST_TOP - 20f, 80f);
+            place(list.addPara("Stance", gray, 0f), 914f, LIST_TOP - 20f, 100f);
             for (int i = 0; i < members.size(); i++) {
                 FleetMemberAPI member = members.get(i);
                 Row row = newRow(member);
                 float y = LIST_TOP + i * ROW;
                 icon(list, member, 10f, y, 40f);
-                place(list.addPara(name(member, 38), 0f), 60f, y + 4f, 236f);
-                place(list.addPara(member.getHullSpec().getHullName() + ", " + Math.round(member.getDeploymentPointsCost()) + " DP",
+                List<Role> roles = rolesOf(member);
+                String tags = tagsOf(roles);
+                LabelAPI title = place(list.addPara(tags.isEmpty() ? name(member, 38)
+                        : name(member, Math.max(12, 36 - tags.length())) + "  " + tags, 0f), 60f, y + 4f, 236f);
+                colourTags(title, roles);
+                place(list.addPara(member.getHullSpec().getHullName() + ", " + Math.round(member.getDeploymentPointsCost()) + " DP"
+                        + securityText(member, ", "),
                         gray, 0f), 60f, y + 22f, 236f);
                 if (row.automated) {
                     place(list.addPara(droidsFor(member) + " droids (automated ship)", gray, 0f), 300f, y + 12f, 470f);
                 } else {
-                    place(list.addPara("0 - " + row.capacity, gray, 0f), 300f, y + 12f, 70f);
-                    row.minusTen = button(list, "-10", base, dark, bright, 372f, y + 8f, 40f);
-                    row.minusOne = button(list, "-1", base, dark, bright, 414f, y + 8f, 32f);
-                    row.target = place(list.addPara("", Misc.getHighlightColor(), 0f), 452f, y + 12f, 44f);
-                    row.plusOne = button(list, "+1", base, dark, bright, 498f, y + 8f, 32f);
-                    row.plusTen = button(list, "+10", base, dark, bright, 532f, y + 8f, 40f);
-                    row.priority = button(list, "Priority", base, dark, bright, 584f, y + 8f, 84f);
-                    row.excluded = button(list, "No marines", base, dark, bright, 672f, y + 8f, 98f);
+                    place(list.addPara("0 - " + row.capacity, gray, 0f), 300f, y + 12f, 66f);
+                    row.zero = button(list, "0", base, dark, bright, 368f, y + 8f, 28f);
+                    row.minusTen = button(list, "-10", base, dark, bright, 398f, y + 8f, 36f);
+                    row.minusOne = button(list, "-1", base, dark, bright, 436f, y + 8f, 28f);
+                    row.target = place(list.addPara("", Misc.getHighlightColor(), 0f), 470f, y + 12f, 42f);
+                    row.plusOne = button(list, "+1", base, dark, bright, 514f, y + 8f, 28f);
+                    row.plusTen = button(list, "+10", base, dark, bright, 544f, y + 8f, 36f);
+                    row.max = button(list, "Max", base, dark, bright, 582f, y + 8f, 40f);
+                    row.priority = button(list, "Priority", base, dark, bright, 630f, y + 8f, 80f);
+                    row.excluded = button(list, "No marines", base, dark, bright, 714f, y + 8f, 96f);
                     row.priority.setChecked(row.entry.priority);
                     row.excluded.setChecked(row.entry.excluded);
-                    row.assigned = place(list.addPara("", 0f), 780f, y + 12f, 110f);
+                    row.assigned = place(list.addPara("", 0f), 818f, y + 4f, 94f);
+                    int militia = militiaOf(member);
+                    if (militia > 0) place(list.addPara("+" + militia + " militia", gray, 0f), 818f, y + 22f, 94f);
                 }
-                row.stanceButton = button(list, view.stances.get(member.getId()).label, base, dark, bright, 900f, y + 8f, 120f);
+                row.stanceButton = button(list, view.stances.get(member.getId()).label, base, dark, bright, 914f, y + 8f, 112f);
                 rows.add(row);
             }
             list.setHeightSoFar(LIST_TOP + members.size() * ROW + 20f);
@@ -334,21 +436,26 @@ public final class MarineScreen {
                 FleetMemberAPI member = members.get(i);
                 Row row = newRow(member);
                 float x = 10f + (i % CARD_COLS) * (CARD_W + 8f);
-                float y = TOP - 10f + (i / CARD_COLS) * (CARD_H + 8f);
+                float y = TOP + (i / CARD_COLS) * (CARD_H + 8f);
                 icon(list, member, x + 8f, y + 8f, 64f);
                 place(list.addPara(name(member, 26), 0f), x + 80f, y + 8f, CARD_W - 86f);
                 place(list.addPara(member.getHullSpec().getHullName(), gray, 0f), x + 80f, y + 26f, CARD_W - 86f);
-                place(list.addPara(Math.round(member.getDeploymentPointsCost()) + " DP", gray, 0f), x + 80f, y + 44f, CARD_W - 86f);
+                place(list.addPara(Math.round(member.getDeploymentPointsCost()) + " DP" + securityText(member, ", "), gray, 0f),
+                        x + 80f, y + 44f, CARD_W - 86f);
                 if (row.automated) {
                     place(list.addPara(droidsFor(member) + " droids", Misc.getHighlightColor(), 0f), x + 8f, y + 84f, CARD_W - 16f);
                     place(list.addPara("Automated ship: no crew, no marines", gray, 0f), x + 8f, y + 104f, CARD_W - 16f);
                 } else {
-                    place(list.addPara("Room 0 - " + row.capacity, gray, 0f), x + 80f, y + 62f, CARD_W - 86f);
-                    row.minusTen = button(list, "-10", base, dark, bright, x + 8f, y + 82f, 40f);
-                    row.minusOne = button(list, "-1", base, dark, bright, x + 50f, y + 82f, 32f);
-                    row.target = place(list.addPara("", Misc.getHighlightColor(), 0f), x + 88f, y + 86f, 44f);
-                    row.plusOne = button(list, "+1", base, dark, bright, x + 134f, y + 82f, 32f);
-                    row.plusTen = button(list, "+10", base, dark, bright, x + 168f, y + 82f, 40f);
+                    int militia = militiaOf(member);
+                    place(list.addPara("Room 0 - " + row.capacity + (militia > 0 ? ", +" + militia + " militia" : ""), gray, 0f),
+                            x + 80f, y + 62f, CARD_W - 86f);
+                    row.zero = button(list, "0", base, dark, bright, x + 8f, y + 82f, 26f);
+                    row.minusTen = button(list, "-10", base, dark, bright, x + 36f, y + 82f, 34f);
+                    row.minusOne = button(list, "-1", base, dark, bright, x + 72f, y + 82f, 26f);
+                    row.target = place(list.addPara("", Misc.getHighlightColor(), 0f), x + 102f, y + 86f, 40f);
+                    row.plusOne = button(list, "+1", base, dark, bright, x + 144f, y + 82f, 26f);
+                    row.plusTen = button(list, "+10", base, dark, bright, x + 172f, y + 82f, 34f);
+                    row.max = button(list, "Max", base, dark, bright, x + 208f, y + 82f, 34f);
                     row.priority = button(list, "Priority", base, dark, bright, x + 8f, y + 112f, 112f);
                     row.excluded = button(list, "No marines", base, dark, bright, x + 124f, y + 112f, 116f);
                     row.priority.setChecked(row.entry.priority);
@@ -356,6 +463,8 @@ public final class MarineScreen {
                     row.assigned = place(list.addPara("", 0f), x + 124f, y + 148f, CARD_W - 130f);
                 }
                 row.stanceButton = button(list, view.stances.get(member.getId()).label, base, dark, bright, x + 8f, y + 144f, 112f);
+                List<Role> roles = rolesOf(member);
+                if (!roles.isEmpty()) colourTags(place(list.addPara(tagsOf(roles), 0f), x + 8f, y + 174f, CARD_W - 16f), roles);
                 rows.add(row);
             }
             int lines = (members.size() + CARD_COLS - 1) / CARD_COLS;
@@ -398,26 +507,79 @@ public final class MarineScreen {
             return button;
         }
 
+        private int countOf(Role role) {
+            int count = 0;
+            for (FleetMemberAPI member : members) {
+                if (rolesOf(member).contains(role)) count++;
+            }
+            return count;
+        }
+
+        /** Roles at least one ship has, in tag order. */
+        private List<Role> presentRoles() {
+            List<Role> present = new ArrayList<Role>();
+            for (Role role : Role.values()) {
+                if (countOf(role) > 0) present.add(role);
+            }
+            return present;
+        }
+
+        private String roleCounts() {
+            StringBuilder text = new StringBuilder();
+            for (Role role : presentRoles()) {
+                text.append(text.length() == 0 ? "" : "  ").append(role.tag).append(" ").append(countOf(role));
+            }
+            return text.length() == 0 ? "No support or command ships" : text.toString();
+        }
+
         private void refresh() {
             MarineAllocation.Result result = MarineAllocation.compute(marineShips, marines, view.entries);
             int placed = 0;
             int droids = 0;
+            int militia = 0;
+            int bayShips = 0;
+            int bayRoom = 0;
+            int security = 0;
+            int securityFull = 0;
+            boolean allExcluded = true;
+            boolean anyCrewed = false;
             for (Row row : rows) {
                 if (row.automated) {
                     droids += droidsFor(row.member);
                     continue;
+                }
+                anyCrewed = true;
+                if (!row.entry.excluded) allExcluded = false;
+                militia += militiaOf(row.member);
+                if (hasForge(row.member)) {
+                    security += Math.round(SecurityDroids.current(row.member));
+                    securityFull += SecurityDroids.full(row.member);
+                }
+                if (row.member.getVariant() != null && row.member.getVariant().hasHullMod(BoardingCombatPlugin.HULLMOD_ID)) {
+                    bayShips++;
+                    bayRoom += row.capacity;
                 }
                 int target = MarineAllocation.targetOf(row.member, row.entry);
                 Integer gets = result.assigned.get(row.member.getId());
                 int got = gets == null ? 0 : gets;
                 placed += got;
                 row.target.setText(row.entry.excluded ? "-" : "" + target);
-                row.assigned.setText("Gets " + got + (got < target && !row.entry.excluded ? " (short)" : ""));
+                // Set targets in the highlight colour, automatic ones grey
+                row.target.setColor(MarineAllocation.isSet(row.entry) && !row.entry.excluded
+                        ? Misc.getHighlightColor() : Misc.getGrayColor());
+                String extra = got < target && !row.entry.excluded ? " (short)" : got > target ? " (spare)" : "";
+                row.assigned.setText("Gets " + got + extra);
                 row.priority.setChecked(row.entry.priority);
                 row.excluded.setChecked(row.entry.excluded);
             }
-            summary.setText("Marines in the fleet: " + marines + "     On ships: " + placed
-                    + "     Not on any ship: " + result.unassigned + (droids > 0 ? "     Droids on automated ships: " + droids : ""));
+            noneButton.setText(anyCrewed && allExcluded ? "Allow marines: all" : "No marines: all");
+            StringBuilder text = new StringBuilder("Marines: " + marines + "     On ships: " + placed
+                    + "     On no ship: " + result.unassigned);
+            if (bayShips > 0) text.append("     Boarding ships: " + bayShips + " (room for " + bayRoom + ")");
+            if (militia > 0) text.append("     Militia: " + militia);
+            if (securityFull > 0) text.append("     Security droids: " + security + " / " + securityFull);
+            if (droids > 0) text.append("     Automated droids: " + droids);
+            summary.setText(text.toString());
         }
 
         @Override
@@ -464,10 +626,23 @@ public final class MarineScreen {
                 }
                 changed = true;
             }
-            if (clicked(clearButton)) {
+            if (clicked(noneButton)) {
+                // Toggle: every ship "no marines", or none
+                boolean allExcluded = true;
+                for (Row row : rows) {
+                    if (!row.automated && !row.entry.excluded) allExcluded = false;
+                }
                 for (Row row : rows) {
                     if (row.automated) continue;
-                    row.entry.target = 0;
+                    row.entry.excluded = !allExcluded;
+                    if (row.entry.excluded) row.entry.priority = false;
+                }
+                changed = true;
+            }
+            if (clicked(resetButton)) {
+                for (Row row : rows) {
+                    if (row.automated) continue;
+                    row.entry.target = -1;
                     row.entry.priority = false;
                     row.entry.excluded = false;
                 }
@@ -481,6 +656,14 @@ public final class MarineScreen {
                     row.stanceButton.setText(next.label);
                 }
                 if (row.automated) continue;
+                if (clicked(row.zero)) {
+                    row.entry.target = 0;
+                    changed = true;
+                }
+                if (clicked(row.max)) {
+                    row.entry.target = row.capacity;
+                    changed = true;
+                }
                 int step = 0;
                 if (clicked(row.minusTen)) step -= 10;
                 if (clicked(row.minusOne)) step -= 1;
