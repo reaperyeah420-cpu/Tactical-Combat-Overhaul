@@ -39,6 +39,7 @@ public class TcoModPlugin extends BaseModPlugin {
         RadarSetup.apply();
         EnergyAmmo.apply();
         WeaponCards.apply();
+        FormatGuard.apply();
     }
 
     @Override
@@ -48,6 +49,7 @@ public class TcoModPlugin extends BaseModPlugin {
         // Re-registered after every other mod's plugins
         Global.getSector().addTransientScript(new TcoCampaignPlugin.LateRegister());
         Global.getSector().addTransientListener(new BoardingResults.Listener());
+        Global.getSector().addTransientScript(new BoardingResults.Returned());
         Global.getSector().addTransientListener(new PodResults.Listener());
         Global.getSector().addTransientScript(new MarineScreen.Hotkey());
         Global.getSector().addTransientScript(new NpcHullmods.Scanner());
@@ -56,6 +58,8 @@ public class TcoModPlugin extends BaseModPlugin {
         // LunaLib values may have changed since startup
         EnergyAmmo.apply();
         WeaponCards.apply();
+        // Again here, for mods that load after TCO or rewrite descriptions on game load
+        FormatGuard.apply();
         // Ship-adjusted refit cards (needs LunaLib)
         if (TcoSettings.lunaEnabled()) {
             try {

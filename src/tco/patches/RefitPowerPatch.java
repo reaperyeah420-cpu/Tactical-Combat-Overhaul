@@ -44,7 +44,8 @@ import tco.power.PowerCombatPlugin;
  * siblings, `belowRight` "Build in" (or "Add" when "Build in" isn't there), so they follow the list as it grows.
  * MagicLib adds its Paintjobs button (a ButtonAPI child with custom data "PAINTJOB_BUTTON") `belowLeft` whatever was
  * the widget's last child, often our box; `tick` (every frame, from tco.RefitPowerWatcher) anchors that button on
- * "Build in" and the boxes on it, and back on "Build in" when MagicLib takes the button away.
+ * "Build in" and both boxes on "Build in" too, one button-height lower while the button is there. Chaining the boxes
+ * on the button (and power on regen) threw the power box far up or down on some ships.
  * <p>
  * Values come from the refit screen's preview ship and the variant being edited (what the game's own stats panel
  * reads), on every `syncWithVariant` and every tick, so they follow changes live. The fleet member's own stats and
@@ -61,7 +62,7 @@ public class RefitPowerPatch {
 
     private static final class Boxes {
         L power, regen;
-        PositionAPI regenPos;
+        PositionAPI powerPos, regenPos;
         n anchor;
         // The Paintjobs button the boxes sit under, or null
         UIComponentAPI under;
@@ -143,7 +144,7 @@ public class RefitPowerPatch {
         mine.regen.setValue("+" + Math.round(regen) + "/s");
         colour(mine.power, SecondaryEnergyBanks.has(variant));
         colour(mine.regen, AuxiliaryGenerator.has(variant));
-        note("values shown (" + Math.round(capacity) + ", +" + Math.round(regen) + "/s)");
+        note("values shown");
     }
 
     /** Under MagicLib's Paintjobs button when the widget has one, else under "Build in" (or "Add"). */
@@ -155,15 +156,17 @@ public class RefitPowerPatch {
                 break;
             }
         }
-        if (paintjob == mine.under) return;
+        float gap = PAD;
         if (paintjob != null) {
-            // MagicLib anchors it on the widget's last child, often our box: put it under Build in first, then us
+            // MagicLib anchors it on the widget's last child, often our box: put it under Build in
             paintjob.getPosition().belowLeft(mine.anchor, PAD);
-            mine.regenPos.belowRight(paintjob, PAD);
-            note("boxes moved below the Paintjobs button");
-        } else {
-            mine.regenPos.belowRight(mine.anchor, PAD);
+            gap += paintjob.getPosition().getHeight() + PAD;
+            if (paintjob != mine.under) note("boxes moved below the Paintjobs button");
         }
+        // Both on Build in itself, never on each other or the button; power one box-width to the left of regen
+        mine.regenPos.belowRight(mine.anchor, gap);
+        mine.powerPos.belowRight(mine.anchor, gap);
+        mine.powerPos.setXAlignOffset(-(mine.regenPos.getWidth() + PAD));
         mine.under = paintjob;
     }
 
@@ -186,10 +189,12 @@ public class RefitPowerPatch {
         n regenButton = button(regen);
         // Right-aligned under the button like the game's own rows; power to the left of regen
         PositionAPI regenPos = mods.add(regenButton).belowRight(anchor, PAD);
-        mods.add(powerButton).leftOfMid(regenButton, PAD);
+        PositionAPI powerPos = mods.add(powerButton).belowRight(anchor, PAD);
+        powerPos.setXAlignOffset(-(regenPos.getWidth() + PAD));
         Boxes made = new Boxes();
         made.power = power;
         made.regen = regen;
+        made.powerPos = powerPos;
         made.regenPos = regenPos;
         made.anchor = anchor;
         boxes.put(mods, made);

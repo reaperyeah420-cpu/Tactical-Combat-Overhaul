@@ -1,5 +1,6 @@
 package tco;
 
+import java.awt.Color;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -15,14 +16,21 @@ import com.fs.starfarer.api.util.Misc;
 public final class BattleReport {
 
     private static final List<String> lines = new ArrayList<String>();
+    // Per line; null is the report's grey
+    private static final List<Color> colors = new ArrayList<Color>();
     private static boolean scheduled;
 
     private BattleReport() {
     }
 
     public static void add(String line) {
+        add(line, null);
+    }
+
+    public static void add(String line, Color color) {
         if (line == null || line.isEmpty()) return;
         lines.add(line);
+        colors.add(color);
         if (scheduled) return;
         try {
             if (Global.getSector() == null) return;
@@ -31,6 +39,7 @@ public final class BattleReport {
         } catch (RuntimeException e) {
             // No campaign (mission or simulator)
             lines.clear();
+            colors.clear();
         }
     }
 
@@ -62,13 +71,15 @@ public final class BattleReport {
             done = true;
             scheduled = false;
             List<String> out = new ArrayList<String>(lines);
+            List<Color> tints = new ArrayList<Color>(colors);
             lines.clear();
+            colors.clear();
             if (out.isEmpty()) return;
             InteractionDialogAPI dialog = Global.getSector().getCampaignUI().getCurrentInteractionDialog();
-            if (dialog != null && dialog.getTextPanel() != null) {
-                for (String line : out) dialog.getTextPanel().addPara(line, Misc.getGrayColor());
-            } else {
-                for (String line : out) Global.getSector().getCampaignUI().addMessage(line);
+            for (int i = 0; i < out.size(); i++) {
+                Color color = tints.get(i) == null ? Misc.getGrayColor() : tints.get(i);
+                if (dialog != null && dialog.getTextPanel() != null) dialog.getTextPanel().addPara(out.get(i), color);
+                else Global.getSector().getCampaignUI().addMessage(out.get(i), color);
             }
         }
     }

@@ -2,7 +2,7 @@
     "id": "tactical_combat_overhaul",
     "name": "Tactical Combat Overhaul",
     "author": "Reaper",
-    "version": "0.31.0",
+    "version": "0.31.2",
     "description": "RTS-style fleet command with fog of war, bigger battlefields and new objectives. Grounded combat: armor penetration and ricochets, limited ammo with resupply ships, reactor power, fires, cook-offs and slow ship deaths. Radar and IR missiles with flares, jamming and datalinks, and command ships that run the fleet's sensors and electronic warfare. Board and capture ships deck by deck, rescue escape pods, repair and tow mid-battle. NPC fleets play by the same rules. Works with ship and weapon mods. Optional: PatchLib unlocks extra features (fuller fog of war, smarter AI power use, coloured weapon cards, bigger mission maps).",
     "gameVersion": "0.98a-RC8",
     "jars": [

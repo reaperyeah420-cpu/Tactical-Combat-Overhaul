@@ -39,6 +39,7 @@ import com.fs.starfarer.api.combat.WeaponGroupAPI;
 import com.fs.starfarer.api.fleet.FleetMemberAPI;
 import com.fs.starfarer.api.impl.PlayerFleetPersonnelTracker;
 import com.fs.starfarer.api.input.InputEventAPI;
+import com.fs.starfarer.api.ui.Alignment;
 import com.fs.starfarer.api.ui.Fonts;
 import com.fs.starfarer.api.ui.LabelAPI;
 import com.fs.starfarer.api.util.Misc;
@@ -72,6 +73,9 @@ public class BoardingCombatPlugin extends BaseEveryFrameCombatPlugin {
     public static final String ENGINE_KEY = "tco_boarding_plugin";
     public static final String HULLMOD_ID = "tco_boarding_bay";
     public static final String CAPTURED_KEY = "tco_captured";
+    // Set on a ship's first capture: the side that lost it may board it back once, while it flees
+    private static final String RETAKE_BY_KEY = "tco_retake_by";
+    private static final String RETAKEN_KEY = "tco_retaken";
     private static final String SHUTTLE_VARIANT = "tco_boarding_shuttle_Hull";
     // Threat fragment craft: a fighter, so point defence shoots at it
     private static final String FRAGMENT_WING = "tco_boarding_fragment_wing";
@@ -224,6 +228,13 @@ public class BoardingCombatPlugin extends BaseEveryFrameCombatPlugin {
     private final Map<ShipAPI, Fight> fights = new LinkedHashMap<ShipAPI, Fight>();
     private final List<Prize> prizes = new ArrayList<Prize>();
     public final List<FleetMemberAPI> capturedThisBattle = new ArrayList<FleetMemberAPI>();
+    // Big warning across the screen, shown until bannerUntil (combat time)
+    private String bannerText;
+    private Color bannerColor;
+    private float bannerUntil = -1f;
+    private LabelAPI bannerLabel;
+    private String bannerShown;
+    private final Map<ShipAPI, LabelAPI> prizeLabels = new HashMap<ShipAPI, LabelAPI>();
 
     public static BoardingCombatPlugin get(CombatEngineAPI engine) {
         if (engine == null) return null;
@@ -237,6 +248,7 @@ public class BoardingCombatPlugin extends BaseEveryFrameCombatPlugin {
         TcoSettings.load();
         BoardingResults.captured.clear();
         BoardingResults.lost.clear();
+        BoardingResults.retaken.clear();
         BoardingResults.newFlagship = null;
         BoardingResults.cores.clear();
         BoardingResults.disabled.clear();
@@ -517,7 +529,18 @@ public class BoardingCombatPlugin extends BaseEveryFrameCombatPlugin {
         if (target.isStation() || target.isStationModule()) return false;
         if (SupplyFob.isFobPart(target) || AmmoRules.isShuttle(target)) return false;
         if (DeathThroes.isDying(target)) return false;
-        return !target.getCustomData().containsKey(CAPTURED_KEY);
+        if (target.getCustomData().containsKey(CAPTURED_KEY)) return canRetake(target, attackerOwner);
+        return true;
+    }
+
+    /** A captured ship still on its way off the map, boardable once by the side it was taken from. */
+    private boolean canRetake(ShipAPI ship, int side) {
+        Object by = ship.getCustomData().get(RETAKE_BY_KEY);
+        if (!(by instanceof Integer) || (Integer) by != side || ship.getCustomData().containsKey(RETAKEN_KEY)) return false;
+        for (Prize prize : prizes) {
+            if (prize.ship == ship) return true;
+        }
+        return false;
     }
 
     /** Recalls shuttles not yet aboard; returns marines coming back. */
@@ -1943,8 +1966,17 @@ public class BoardingCombatPlugin extends BaseEveryFrameCombatPlugin {
         }
         ShipAPI ship = fight.ship;
         int newOwner = ship.getOwner() == 0 ? 1 : 0;
+        boolean retake = canRetake(ship, newOwner);
+        boolean ours = isPlayerShip(ship);
         boolean playerAboard = newOwner == 1 && ejection == null
                 && RtsCombatPlugin.playerAboard(engine, ship);
+        // The one capture that can still be undone
+        if (retake) ship.setCustomData(RETAKEN_KEY, Boolean.TRUE);
+        else ship.setCustomData(RETAKE_BY_KEY, ship.getOwner());
+        Iterator<Prize> old = prizes.iterator();
+        while (old.hasNext()) {
+            if (old.next().ship == ship) old.remove();
+        }
         try {
             // Off the enemy roster
             engine.getFleetManager(ship.getOwner()).removeDeployed(ship, false);
@@ -1967,7 +1999,8 @@ public class BoardingCombatPlugin extends BaseEveryFrameCombatPlugin {
         ship.setHoldFire(true);
         ship.setInvalidTransferCommandTarget(true);
         if (ship.getShield() != null && ship.getShield().isOn()) ship.getShield().toggleOff();
-        garrisons.remove(ship);
+        // Whoever boards it back fights the boarders left aboard
+        garrisons.put(ship, Math.max(0f, fight.attackers));
         rememberLoyalCraft(ship);
 
         Prize prize = new Prize();
@@ -1979,13 +2012,33 @@ public class BoardingCombatPlugin extends BaseEveryFrameCombatPlugin {
         ship.setShipAI(prize.ai);
         prizes.add(prize);
         FleetMemberAPI member = ship.getFleetMember();
-        if (newOwner == 1) {
+        if (retake) {
+            // Back to the side it was taken from; it leaves the battle
+            if (member != null && newOwner == 0) {
+                lostThisBattle.remove(member);
+                BoardingResults.lost.remove(member);
+                if (!BoardingResults.retaken.contains(member)) BoardingResults.retaken.add(member);
+            } else if (member != null) {
+                capturedThisBattle.remove(member);
+                BoardingResults.captured.remove(member);
+            }
+            if (newOwner == 0) {
+                Msg.send(engine, Msg.PLAYER, ship.getName() + " has been retaken and is leaving the battle.");
+                if (prizeLabels.containsKey(ship)) banner(ship.getName() + " RETAKEN", new Color(120, 230, 120), false);
+            } else {
+                message(ship, "Enemy boarders have retaken " + ship.getName() + ". It is leaving the battle.");
+            }
+        } else if (newOwner == 1) {
             // Ours, taken by the enemy
             if (member != null) {
                 lostThisBattle.add(member);
                 BoardingResults.lost.add(member);
             }
-            message(ship, ship.getName() + " has been captured by enemy boarders!");
+            message(ship, ship.getName() + " has been captured by enemy boarders! Board it before it escapes to retake it.");
+            if (ours) {
+                banner(ship.getName() + " CAPTURED BY ENEMY BOARDERS - board it before it escapes", new Color(255, 90, 75), true);
+                prizeLabels.put(ship, null);
+            }
             if (playerAboard) eject(ship);
         } else {
             // Taken mostly by player marines: joins the fleet. By allies: just leaves.
@@ -2032,6 +2085,16 @@ public class BoardingCombatPlugin extends BaseEveryFrameCombatPlugin {
 
     private void message(ShipAPI about, String text) {
         Msg.about(engine, about, text);
+    }
+
+    private void banner(String text, Color color, boolean alarm) {
+        bannerText = text;
+        bannerColor = color;
+        bannerUntil = engine.getTotalElapsedTime(false) + 8f;
+        try {
+            Global.getSoundPlayer().playUISound(alarm ? "cr_playership_critical" : "cr_allied_warning", 1f, 1f);
+        } catch (RuntimeException e) {
+        }
     }
 
     // ------------------------------------------------------------------ AI boarding
@@ -2399,8 +2462,11 @@ public class BoardingCombatPlugin extends BaseEveryFrameCombatPlugin {
 
     @Override
     public void renderInUICoords(ViewportAPI viewport) {
-        if (engine == null || fights.isEmpty() || Global.getCurrentState() != GameState.COMBAT) return;
+        if (engine == null || Global.getCurrentState() != GameState.COMBAT) return;
         if (engine.getCombatUI() == null || engine.getCombatUI().isShowingCommandUI()) return;
+        renderBanner();
+        renderPrizeMarkers(viewport);
+        if (fights.isEmpty()) return;
 
         for (Fight fight : fights.values()) {
             ShipAPI ship = fight.ship;
@@ -2434,6 +2500,66 @@ public class BoardingCombatPlugin extends BaseEveryFrameCombatPlugin {
                 fight.label.render(1f);
             } catch (RuntimeException e) {
                 fight.label = null;
+            }
+        }
+    }
+
+    private void renderBanner() {
+        if (bannerText == null) return;
+        float now = engine.getTotalElapsedTime(false);
+        if (now > bannerUntil) {
+            bannerText = null;
+            return;
+        }
+        try {
+            if (bannerLabel == null) bannerLabel = Global.getSettings().createLabel(bannerText, Fonts.ORBITRON_24AABOLD);
+            if (!bannerText.equals(bannerShown)) {
+                bannerLabel.setText(bannerText);
+                bannerShown = bannerText;
+            }
+            float w = Global.getSettings().getScreenWidth();
+            float h = Global.getSettings().getScreenHeight();
+            bannerLabel.setAlignment(Alignment.MID);
+            bannerLabel.setColor(bannerColor);
+            bannerLabel.getPosition().setSize(w - 100f, 30f);
+            bannerLabel.getPosition().setLocation(50f, h * 0.72f);
+            // Pulses, then fades over the last second
+            float pulse = 0.65f + 0.35f * (float) Math.abs(Math.sin(now * 4f));
+            bannerLabel.render(pulse * Math.min(1f, bannerUntil - now));
+        } catch (RuntimeException e) {
+            bannerLabel = null;
+            bannerText = null;
+        }
+    }
+
+    /** "CAPTURED" over each of the player's ships the enemy is making off with. */
+    private void renderPrizeMarkers(ViewportAPI viewport) {
+        if (prizeLabels.isEmpty()) return;
+        Iterator<Map.Entry<ShipAPI, LabelAPI>> it = prizeLabels.entrySet().iterator();
+        while (it.hasNext()) {
+            Map.Entry<ShipAPI, LabelAPI> e = it.next();
+            ShipAPI ship = e.getKey();
+            if (!ship.isAlive() || !engine.isEntityInPlay(ship) || ship.getCustomData().containsKey(RETAKEN_KEY)) {
+                it.remove();
+                continue;
+            }
+            Vector2f loc = ship.getLocation();
+            if (fights.containsKey(ship) || !viewport.isNearViewport(loc, ship.getCollisionRadius() + 200f)
+                    || FogOfWar.isHidden(ship)) continue;
+            try {
+                LabelAPI label = e.getValue();
+                if (label == null) {
+                    label = Global.getSettings().createLabel("CAPTURED - board it to retake it", Fonts.DEFAULT_SMALL);
+                    e.setValue(label);
+                }
+                float x = viewport.convertWorldXtoScreenX(loc.x);
+                float y = viewport.convertWorldYtoScreenY(loc.y + ship.getCollisionRadius() + 40f);
+                label.setColor(new Color(255, 90, 75));
+                label.getPosition().setSize(460f, 16f);
+                label.getPosition().setLocation(x - 110f, y);
+                label.render(1f);
+            } catch (RuntimeException ex) {
+                it.remove();
             }
         }
     }
